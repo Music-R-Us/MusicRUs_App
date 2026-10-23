@@ -1,0 +1,40 @@
+﻿@inherits LayoutComponentBase
+
+<div class="min-h-screen bg-coffee-bean-950 text-porcelain-50">
+    <div class="flex min-h-screen w-full flex-col lg:flex-row">
+        <aside class="border-b border-fiery-terracotta-700/40 bg-fiery-terracotta-900/80 px-6 py-5 backdrop-blur lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r lg:px-5">
+            <div class="mb-6 flex items-center justify-between">
+                <a href="/" class="text-lg font-semibold tracking-tight text-porcelain-50">
+                    Music-R-Us
+                </a>
+
+            </div>
+
+            <!-- <NavMenu /> -->
+        </aside>
+        <main class="flex-1">
+            <header class="border-b border-fiery-terracotta-700/40 bg-fiery-terracotta-900/80 px-6 py-4 backdrop-blur justify-between flex items-center">
+                <a href="/loginpick" class="rounded-full border border-granite-400/30 bg-granite-500/80 px-2 py-1 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-pine-teal-300 transition hover:bg-granite-500">
+                    Login/Signup
+                </a>
+                
+                <a class="text-sm font-medium text-granite-300 transition hover:text-porcelain-50 " href="/about"  rel="noreferrer" >
+                    About the app
+                </a>
+
+            </header>
+
+            <article class="px-6 py-8 lg:px-10">
+                @Body
+            </article>  
+        </main>
+
+    </div>
+    <div id="blazor-error-ui" data-nosnippet class="fixed inset-x-0 bottom-0 z-50 hidden border-t border-fiery-terracotta-400/30 bg-coffee-bean-50 px-4 py-3 text-sm text-coffee-bean-950 shadow-lg shadow-black/20">
+        <div class="mx-auto flex max-w-7xl items-center gap-3">
+            <span class="font-medium">An unhandled error has occurred.</span>
+            <a href="." class="rounded-md bg-fiery-terracotta-600 px-3 py-1.5 font-medium text-porcelain-50 no-underline hover:bg-fiery-terracotta-500">Reload</a>
+            <button class="ml-auto text-lg leading-none text-fiery-terracotta-900" type="button" aria-label="Dismiss">x</button>
+        </div>
+    </div>
+</div>

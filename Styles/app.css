@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@source "../Pages/**/*.razor";
+@source "../Layout/**/*.razor";
+@source "../Pages/**/*.razor";
+@source "../Components/**/*.razor";
+@source "../*.razor";
+@source "../wwwroot/index.html";
+
+@source "../Components/**/*.razor";
+
+@theme {
+	--color-coffee-bean-50: #f5f0f0;
+	--color-coffee-bean-100: #eae1e1;
+	--color-coffee-bean-200: #d5c3c3;
+	--color-coffee-bean-300: #c0a5a5;
+	--color-coffee-bean-400: #ab8787;
+	--color-coffee-bean-500: #966969;
+	--color-coffee-bean-600: #785454;
+	--color-coffee-bean-700: #5a3f3f;
+	--color-coffee-bean-800: #3c2a2a;
+	--color-coffee-bean-900: #1e1515;
+	--color-coffee-bean-950: #150f0f;
+
+	--color-porcelain-50: #ffffe5;
+	--color-porcelain-100: #ffffcc;
+	--color-porcelain-200: #ffff99;
+	--color-porcelain-300: #ffff66;
+	--color-porcelain-400: #ffff33;
+	--color-porcelain-500: #ffff00;
+	--color-porcelain-600: #cccc00;
+	--color-porcelain-700: #999900;
+	--color-porcelain-800: #666600;
+	--color-porcelain-900: #333300;
+	--color-porcelain-950: #242400;
+
+	--color-granite-50: #f0f4f5;
+	--color-granite-100: #e1e9ea;
+	--color-granite-200: #c3d4d5;
+	--color-granite-300: #a5bec0;
+	--color-granite-400: #87a9ab;
+	--color-granite-500: #699396;
+	--color-granite-600: #547678;
+	--color-granite-700: #3f585a;
+	--color-granite-800: #2a3b3c;
+	--color-granite-900: #151d1e;
+	--color-granite-950: #0f1515;
+
+	--color-fiery-terracotta-50: #fcebe8;
+	--color-fiery-terracotta-100: #fad7d1;
+	--color-fiery-terracotta-200: #f5aea3;
+	--color-fiery-terracotta-300: #f08675;
+	--color-fiery-terracotta-400: #eb5d47;
+	--color-fiery-terracotta-500: #e63519;
+	--color-fiery-terracotta-600: #b82a14;
+	--color-fiery-terracotta-700: #8a200f;
+	--color-fiery-terracotta-800: #5c150a;
+	--color-fiery-terracotta-900: #2e0b05;
+	--color-fiery-terracotta-950: #200704;
+}
+
+@layer components {
+	.gradient-surface {
+		position: relative;
+		overflow: hidden;
+		border: 1px solid rgb(42 59 60 / 0.9);
+		border-radius: 1.5rem;
+		background:
+			radial-gradient(circle at top right, rgba(85, 170, 153, 0.18), transparent 34%),
+			radial-gradient(circle at bottom left, rgba(230, 53, 25, 0.14), transparent 30%),
+			linear-gradient(135deg, rgba(46, 11, 5, 0.96), rgba(184, 42, 20, 0.82));
+		box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.3);
+	}
+
+	.gradient-surface::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(180deg, rgba(255, 255, 229, 0.08), rgba(255, 255, 255, 0));
+		pointer-events: none;
+	}
+}

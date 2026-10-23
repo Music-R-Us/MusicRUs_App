@@ -1,0 +1,16 @@
+{
+  "name": "musicrus",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "css:build": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/tailwind.css --minify",
+    "css:watch": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/tailwind.css --watch",
+    "start": "dotnet run --launch-profile http",
+    "build": "dotnet build",
+    "publish": "dotnet publish -c Release"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "tailwindcss": "4.3.3"
+  }
+}
