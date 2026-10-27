@@ -1,0 +1,235 @@
+@page "/profile/setup"
+@page "/profile/setup/{UserId:int}"
+
+@layout MainLayout
+
+@using System.ComponentModel.DataAnnotations
+
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject NavigationManager Navigation
+
+<PageTitle>Set up profile</PageTitle>
+
+<section class="mx-auto w-full max-w-4xl">
+	<div class="grid gap-8 rounded-4xl border border-granite-800/80 gradient-surface p-8 backdrop-blur">
+		<div class="grid gap-3">
+			<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Forum profile</p>
+			<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">Set up your profile</h1>
+			<p class="max-w-2xl text-base leading-7 text-porcelain-50/80">
+				Choose how you show up in the MusicRUs forum.
+			</p>
+		</div>
+
+		@if (!isReady)
+		{
+			<div class="rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
+				Loading profile...
+			</div>
+		}
+		else
+		{
+			@if (!string.IsNullOrWhiteSpace(formMessage))
+			{
+				<div class="rounded-2xl border border-fiery-terracotta-300/50 bg-fiery-terracotta-950/80 p-4 text-sm font-medium text-porcelain-50">
+					@formMessage
+				</div>
+			}
+
+			<EditForm Model="profileModel" OnValidSubmit="HandleSaveAsync">
+				<DataAnnotationsValidator />
+				<ValidationSummary class="text-sm text-fiery-terracotta-200" />
+
+				<div class="grid gap-5">
+					<div class="grid gap-2 sm:grid-cols-2">
+						<div class="grid gap-2">
+							<label class="text-sm font-medium text-porcelain-50" for="display-name">Display name</label>
+							<InputText id="display-name" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.DisplayName" />
+						</div>
+
+						<div class="grid gap-2">
+							<label class="text-sm font-medium text-porcelain-50" for="location">Location</label>
+							<InputText id="location" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.Location" />
+						</div>
+					</div>
+
+					<div class="grid gap-2">
+						<label class="text-sm font-medium text-porcelain-50" for="bio">Bio</label>
+						<InputTextArea id="bio" rows="5" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.Bio" />
+					</div>
+
+					<div class="grid gap-2 sm:grid-cols-2">
+						<div class="grid gap-2">
+							<label class="text-sm font-medium text-porcelain-50" for="avatar-url">Avatar URL</label>
+							<InputText id="avatar-url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.AvatarUrl" />
+						</div>
+
+					</div>
+
+					<div class="grid gap-2">
+						<label class="text-sm font-medium text-porcelain-50" for="website-url">Website URL</label>
+						<InputText id="website-url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.WebsiteUrl" />
+					</div>
+
+					<label class="flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 text-sm font-medium text-porcelain-50">
+						<InputCheckbox class="h-5 w-5 rounded border-granite-700 bg-fiery-terracotta-900 text-fiery-terracotta-500" @bind-Value="profileModel.IsPublic" />
+						<span class="grid gap-1">
+							<span>@(profileModel.IsPublic ? "Public profile" : "Private profile")</span>
+							<span class="text-xs font-normal text-porcelain-50/60">
+								@(profileModel.IsPublic ? "Checked: other members can view your profile." : "Unchecked: your profile stays private.")
+							</span>
+						</span>
+					</label>
+
+					<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+						<button type="button" @onclick="SkipSetup" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-5 py-3 text-base font-semibold text-porcelain-50/80 transition hover:text-porcelain-50">
+							Skip for now
+						</button>
+						<button type="submit" disabled="@isSaving" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-base font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
+							@(isSaving ? "Saving..." : "Save profile")
+						</button>
+					</div>
+				</div>
+			</EditForm>
+		}
+	</div>
+</section>
+
+@code {
+	[Parameter]
+	public int UserId { get; set; }
+
+	private bool isReady;
+	private bool isSaving;
+	private string formMessage = string.Empty;
+	private ProfileSetupModel profileModel = new();
+
+	protected override async Task OnParametersSetAsync()
+	{
+		var initialized = await AuthSession.InitializeAsync();
+		if (!initialized)
+		{
+			return;
+		}
+
+		if (!AuthSession.IsAuthenticated || AuthSession.CurrentUser is null)
+		{
+			Navigation.NavigateTo("/loginpick");
+			return;
+		}
+
+		var currentUserId = AuthSession.CurrentUser.UserId;
+		if (UserId > 0 && UserId != currentUserId)
+		{
+			Navigation.NavigateTo(GetProfileSetupUrl(currentUserId), replace: true);
+			return;
+		}
+
+		var resolvedUserId = currentUserId;
+		var profile = await AuthSession.GetForumProfileAsync(resolvedUserId);
+		profileModel = ProfileSetupModel.FromProfile(profile, AuthSession.CurrentUser, resolvedUserId);
+		isReady = true;
+	}
+
+	private async Task HandleSaveAsync()
+	{
+		if (AuthSession.CurrentUser is null)
+		{
+			Navigation.NavigateTo("/loginpick");
+			return;
+		}
+
+		isSaving = true;
+		formMessage = string.Empty;
+
+		var saved = await AuthSession.SaveForumProfileAsync(profileModel.ToForumProfile());
+		isSaving = false;
+
+		if (!saved)
+		{
+			formMessage = "Could not save your profile. Check the details and try again.";
+			return;
+		}
+
+		Navigation.NavigateTo($"/{Uri.EscapeDataString(AuthSession.CurrentUser.Username)}");
+	}
+
+	private void SkipSetup()
+	{
+		if (AuthSession.CurrentUser is null)
+		{
+			Navigation.NavigateTo("/loginpick");
+			return;
+		}
+
+		Navigation.NavigateTo($"/{Uri.EscapeDataString(AuthSession.CurrentUser.Username)}");
+	}
+
+	private static string GetProfileSetupUrl(int userId)
+	{
+		return userId > 0
+			? $"/profile/setup/{userId}"
+			: "/profile/setup";
+	}
+
+	private sealed class ProfileSetupModel
+	{
+		public int Id { get; set; }
+
+		public int UserId { get; set; }
+
+		[Required]
+		public string DisplayName { get; set; } = string.Empty;
+
+		public string Bio { get; set; } = string.Empty;
+
+		[Url]
+		public string AvatarUrl { get; set; } = string.Empty;
+
+		public string Location { get; set; } = string.Empty;
+
+
+		public string WebsiteUrl { get; set; } = string.Empty;
+
+		public bool IsPublic { get; set; } = true;
+
+
+		public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+		public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+		public static ProfileSetupModel FromProfile(ForumProfile? profile, UserSession user, int userId)
+		{
+			return new ProfileSetupModel
+			{
+				Id = profile?.Id ?? 0,
+				UserId = profile?.UserId > 0 ? profile.UserId : userId,
+				DisplayName = string.IsNullOrWhiteSpace(profile?.DisplayName) ? user.DisplayName : profile.DisplayName,
+				Bio = profile?.Bio ?? string.Empty,
+				AvatarUrl = string.IsNullOrWhiteSpace(profile?.AvatarUrl) ? user.AvatarUrl : profile.AvatarUrl,
+				Location = profile?.Location ?? string.Empty,
+				WebsiteUrl = profile?.WebsiteUrl ?? string.Empty,
+				IsPublic = profile?.IsPublic ?? true,
+				CreatedAt = profile?.CreatedAt ?? DateTimeOffset.UtcNow,
+				UpdatedAt = profile?.UpdatedAt ?? DateTimeOffset.UtcNow
+			};
+		}
+
+		public ForumProfile ToForumProfile()
+		{
+			return new ForumProfile
+			{
+				Id = Id,
+				UserId = UserId,
+				DisplayName = DisplayName.Trim(),
+				Bio = Bio.Trim(),
+				AvatarUrl = AvatarUrl.Trim(),
+				Location = Location.Trim(),
+				WebsiteUrl = WebsiteUrl.Trim(),
+				IsPublic = IsPublic,
+				CreatedAt = CreatedAt,
+				UpdatedAt = DateTimeOffset.UtcNow
+			};
+		}
+	}
+
+}

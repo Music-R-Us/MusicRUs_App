@@ -1,0 +1,137 @@
+@page "/{username}"
+@page "/profile/{UserId:int}"
+
+@layout MainLayout
+
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject NavigationManager Navigation
+
+<PageTitle>@(CurrentProfile?.DisplayName ?? DisplayUsername) Profile</PageTitle>
+
+<section class="w-full">
+	<div class="grid gap-6 rounded-4xl border border-granite-800/80 gradient-surface p-8 backdrop-blur">
+		<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+			<div class="flex items-center gap-5">
+				@if (HasAvatar)
+				{
+					<img src="@CurrentProfile?.AvatarUrl" alt="@DisplayUsername avatar" class="h-20 w-20 rounded-full bg-pine-teal-300 object-cover" />
+				}
+				else
+				{
+					<div class="flex h-20 w-20 items-center justify-center rounded-full bg-pine-teal-300 text-3xl font-semibold text-coffee-bean-950">
+						@ProfileInitial
+					</div>
+				}
+				<div class="grid gap-1">
+					<p class="text-sm font-semibold uppercase tracking-[0.3em] text-porcelain-50/70">Profile</p>
+					<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">@DisplayUsername</h1>
+				</div>
+			</div>
+
+			@if (CanEditProfile)
+			{
+				<div class="flex flex-wrap gap-3 sm:self-center">
+					<a href="@EditProfileUrl" class="self-start rounded-full border border-pine-teal-300/60 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-pine-teal-300 transition hover:bg-granite-800 sm:self-center">
+						Edit profile
+					</a>
+					<button type="button"
+						@onclick="SignOutAsync"
+						class="self-start rounded-full bg-fiery-terracotta-500/90 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-500/70 sm:self-center">
+						Log Out
+					</button>
+				</div>
+			}
+		</div>
+
+		<div class="grid gap-2">
+			<p class="max-w-2xl text-base leading-7 text-porcelain-50/80 sm:text-lg">
+				@Bio
+			</p>
+		</div>
+
+		@if (CurrentProfile is not null)
+		{
+			<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
+				<div>
+					<p class="text-sm font-semibold uppercase tracking-[0.25em] text-pine-teal-300">Profile Information</p>
+				</div>
+				<div class="grid gap-2 text-sm sm:grid-cols-2">
+					<div class="rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
+						<p class="text-porcelain-50/60">Location</p>
+						<p class="text-xl font-semibold text-porcelain-50">@(string.IsNullOrWhiteSpace(CurrentProfile.Location) ? "Not set" : CurrentProfile.Location)</p>
+					</div>
+					<div class="rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
+						<p class="text-porcelain-50/60">Visibility</p>
+						<p class="text-xl font-semibold text-porcelain-50">@(CurrentProfile.IsPublic ? "Public" : "Private")</p>
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+</section>
+
+@code {
+	[Parameter]
+	public string Username { get; set; } = string.Empty;
+
+	[Parameter]
+	public int UserId { get; set; }
+
+	private ForumProfile? CurrentProfile;
+	private UserSession? ViewedUser;
+	protected override async Task OnParametersSetAsync()
+	{
+		await AuthSession.InitializeAsync();
+		CurrentProfile = UserId > 0
+			? await AuthSession.GetForumProfileAsync(UserId)
+			: await AuthSession.GetProfileAsync(Username);	
+	}
+
+	private string DisplayUsername => string.IsNullOrWhiteSpace(CurrentProfile?.DisplayName)
+		? GetProfileUsernameFallback()
+		: CurrentProfile.DisplayName;
+
+	private string Bio => string.IsNullOrWhiteSpace(CurrentProfile?.Bio)
+		? "Profile details are not available yet."
+		: CurrentProfile.Bio;
+
+	private bool HasAvatar => !string.IsNullOrWhiteSpace(CurrentProfile?.AvatarUrl);
+
+	private string ProfileInitial => string.IsNullOrWhiteSpace(DisplayUsername)
+		? "?"
+		: DisplayUsername.Trim()[0].ToString().ToUpperInvariant();
+
+	private bool CanEditProfile => AuthSession.CurrentUser is not null
+		&& CurrentProfile?.UserId > 0
+		&& AuthSession.CurrentUser.UserId == CurrentProfile.UserId;
+
+	private string EditProfileUrl
+	{
+		get
+		{
+			var userId = CurrentProfile?.UserId > 0 ? CurrentProfile.UserId : AuthSession.CurrentUser?.UserId ?? 0;
+			return userId > 0 ? $"/profile/setup/{userId}" : "/profile/setup";
+		}
+	}
+
+	private async Task SignOutAsync()
+	{
+		await AuthSession.SignOutAsync();
+		Navigation.NavigateTo("/loginpick");
+	}
+
+	private string GetProfileUsernameFallback()
+	{
+		if (!string.IsNullOrWhiteSpace(ViewedUser?.Username))
+		{
+			return ViewedUser.Username;
+		}
+
+		if (!string.IsNullOrWhiteSpace(Username))
+		{
+			return Username;
+		}
+
+		return CurrentProfile?.UserId > 0 ? $"User {CurrentProfile.UserId}" : "profile";
+	}
+}

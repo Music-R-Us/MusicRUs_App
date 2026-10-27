@@ -1,5 +1,8 @@
 ﻿@inherits LayoutComponentBase
 
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject IJSRuntime JS
+
 <div class="min-h-screen bg-coffee-bean-950 text-porcelain-50">
     <div class="flex min-h-screen w-full flex-col lg:flex-row">
         <aside class="border-b border-fiery-terracotta-700/40 bg-fiery-terracotta-900/80 px-6 py-5 backdrop-blur lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r lg:px-5">
@@ -14,10 +17,32 @@
         </aside>
         <main class="flex-1">
             <header class="border-b border-fiery-terracotta-700/40 bg-fiery-terracotta-900/80 px-6 py-4 backdrop-blur justify-between flex items-center">
-                <a href="/loginpick" class="rounded-full border border-granite-400/30 bg-granite-500/80 px-2 py-1 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-pine-teal-300 transition hover:bg-granite-500">
-                    Login/Signup
-                </a>
-                
+                @if (AuthSession.CurrentUser is not null)
+                {
+                    <a href="/@AuthSession.CurrentUser.Username" class="inline-flex items-center gap-3 rounded-full border border-granite-400/30 bg-granite-500/80 px-2 py-1 pr-4 text-porcelain-50 transition hover:bg-granite-500">
+                        @if (!string.IsNullOrWhiteSpace(HeaderAvatarUrl))
+                        {
+                            <img src="@HeaderAvatarUrl" alt="@HeaderDisplayName avatar" class="h-9 w-9 rounded-full bg-pine-teal-300 object-cover" />
+                        }
+                        else
+                        {
+                            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-pine-teal-300 text-sm font-semibold uppercase text-coffee-bean-950">
+                                @HeaderAvatarInitial
+                            </span>
+                        }
+                        <span class="grid text-left leading-tight">
+                            <span class="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-pine-teal-300">Profile</span>
+                            <span class="text-sm font-semibold">@HeaderDisplayName</span>
+                        </span>
+                    </a>
+                }
+                else
+                {
+                    <a href="/loginpick" class="rounded-full border border-granite-400/30 bg-granite-500/80 px-2 py-1 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-pine-teal-300 transition hover:bg-granite-500">
+                        Login/Signup
+                    </a>
+                }
+
                 <a class="text-sm font-medium text-granite-300 transition hover:text-porcelain-50 " href="/about"  rel="noreferrer" >
                     About the app
                 </a>
@@ -38,3 +63,84 @@
         </div>
     </div>
 </div>
+
+@code {
+    private ForumProfile? HeaderProfile;
+
+    protected override void OnInitialized()
+    {
+        AuthSession.Changed += OnAuthSessionChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AuthSession.InitializeAsync();
+            await LoadHeaderProfileAsync();
+            await JS.InvokeVoidAsync("MusicRUsAuth.registerInactivityLogout", 30, "/loginpick");
+            StateHasChanged();
+        }
+    }
+
+    private void OnAuthSessionChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadHeaderProfileAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadHeaderProfileAsync()
+    {
+        if (AuthSession.CurrentUser is null || AuthSession.CurrentUser.UserId <= 0)
+        {
+            HeaderProfile = null;
+            return;
+        }
+
+        HeaderProfile = await AuthSession.GetForumProfileAsync(AuthSession.CurrentUser.UserId);
+    }
+
+    private string HeaderDisplayName
+    {
+        get
+        {
+            if (IsMeaningfulProfileValue(HeaderProfile?.DisplayName))
+            {
+                return HeaderProfile!.DisplayName;
+            }
+
+            return AuthSession.CurrentUser?.DisplayName ?? "Profile";
+        }
+    }
+
+    private string HeaderAvatarUrl
+    {
+        get
+        {
+            if (IsMeaningfulProfileValue(HeaderProfile?.AvatarUrl))
+            {
+                return HeaderProfile!.AvatarUrl;
+            }
+
+            return AuthSession.CurrentUser?.AvatarUrl ?? string.Empty;
+        }
+    }
+
+    private string HeaderAvatarInitial => string.IsNullOrWhiteSpace(HeaderDisplayName)
+        ? "P"
+        : HeaderDisplayName[0].ToString().ToUpperInvariant();
+
+    private static bool IsMeaningfulProfileValue(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+            && !string.Equals(value.Trim(), "string", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public void Dispose()
+    {
+        AuthSession.Changed -= OnAuthSessionChanged;
+    }
+}

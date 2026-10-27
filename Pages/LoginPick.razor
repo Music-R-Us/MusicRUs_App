@@ -1,0 +1,261 @@
+@page "/loginpick"
+
+@layout MainLayout
+
+@using System.ComponentModel.DataAnnotations
+
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+<section class="gradient-surface mx-auto w-full max-w-3xl p-10">
+	<div class="grid gap-8">
+		<div class="text-center">
+			<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">
+				@(currentMode == AuthMode.Login ? "Login" : "Signup")
+			</h1>
+			<p class="mt-3 text-base leading-7 text-porcelain-50/80 sm:text-lg">
+				@(currentMode == AuthMode.Login
+					? "Sign in with your username and password."
+					: "Create an account with a few extra details.")
+			</p>
+		</div>
+
+		@if (!string.IsNullOrWhiteSpace(formMessage))
+		{
+			<div class="rounded-2xl border border-fiery-terracotta-300/50 bg-fiery-terracotta-950/80 p-4 text-sm font-medium text-porcelain-50">
+				@formMessage
+			</div>
+		}
+
+		<div class="grid grid-cols-2 gap-4">
+			<button type="button"
+				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Login ? "border-fiery-terracotta-300 bg-fiery-terracotta-500 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
+				@onclick="ShowLogin">
+				Login
+			</button>
+			<button type="button"
+				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Signup ? "border-fiery-terracotta-300 bg-fiery-terracotta-500 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
+				@onclick="ShowSignup">
+				Signup
+			</button>
+		</div>
+
+		@if (currentMode == AuthMode.Login)
+		{
+			<EditForm Model="loginModel" OnValidSubmit="HandleLoginSubmit">
+				<DataAnnotationsValidator />
+				<ValidationSummary class="text-sm text-fiery-terracotta-200" />
+				<div class="grid gap-5">
+					<div class="grid gap-2">
+						<label class="text-sm font-medium text-porcelain-50" for="login-username">Username</label>
+						<InputText id="login-username" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="loginModel.Username" />
+					</div>
+
+					<div class="grid gap-2">
+						<label class="text-sm font-medium text-porcelain-50" for="login-password">Password</label>
+						<InputText id="login-password" type="password" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="loginModel.Password" />
+					</div>
+
+					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
+						@(isSubmitting ? "Logging in..." : "Log in")
+					</button>
+				</div>
+			</EditForm>
+		}
+		else if (currentMode == AuthMode.Signup)
+		{
+			<EditForm Model="signupModel" OnValidSubmit="HandleSignupSubmit">
+				<DataAnnotationsValidator />
+				<ValidationSummary class="text-sm text-fiery-terracotta-200" />
+				<div class="grid gap-5">
+					<div class="grid gap-2">
+						<label class="text-sm font-medium text-porcelain-50" for="signup-name">Username</label>
+						<InputText id="signup-name" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Username" />
+					</div>
+
+					<div class="grid gap-2">
+						<label class="text-sm font-medium text-porcelain-50" for="signup-email">Email</label>
+						<InputText id="signup-email" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Email" />
+					</div>
+
+					<div class="grid gap-2 sm:grid-cols-2">
+						<div class="grid gap-2">
+							<label class="text-sm font-medium text-porcelain-50" for="signup-password">Password</label>
+							<InputText id="signup-password" type="password" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Password" />
+						</div>
+						<div class="grid gap-2">
+							<label class="text-sm font-medium text-porcelain-50" for="signup-confirm">Confirm password</label>
+							<InputText id="signup-confirm" type="password" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.ConfirmPassword" />
+						</div>
+					</div>
+
+					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
+						@(isSubmitting ? "Creating account..." : "Create account")
+					</button>
+				</div>
+			</EditForm>
+		}
+
+		<div class="grid gap-4 border-t border-granite-800/80 pt-6">
+			<div class="flex items-center gap-4 text-sm font-medium text-porcelain-50/60">
+				<span class="h-px flex-1 bg-granite-800"></span>
+				<span>or continue with</span>
+				<span class="h-px flex-1 bg-granite-800"></span>
+			</div>
+			<div id="google-btn" class="flex min-h-11 justify-center"></div>
+		</div>
+	</div>
+</section>
+
+@code {
+	private AuthMode currentMode = AuthMode.Login;
+	private bool isSubmitting;
+	private bool googleButtonInitialized;
+	private string formMessage = string.Empty;
+	private DotNetObjectReference<LoginPick>? dotNetReference;
+
+	private readonly LoginModel loginModel = new();
+	private readonly SignupModel signupModel = new();
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender || googleButtonInitialized)
+		{
+			return;
+		}
+
+		googleButtonInitialized = true;
+		dotNetReference = DotNetObjectReference.Create(this);
+		await JS.InvokeVoidAsync("initGoogleSignIn", dotNetReference);
+	}
+
+	private void ShowLogin()
+	{
+		formMessage = string.Empty;
+		currentMode = AuthMode.Login;
+	}
+
+	private void ShowSignup()
+	{
+		formMessage = string.Empty;
+		currentMode = AuthMode.Signup;
+	}
+
+	private async Task HandleLoginSubmit()
+	{
+		isSubmitting = true;
+		formMessage = string.Empty;
+
+		var result = await AuthSession.LoginAsync(loginModel.Username, loginModel.Password);
+		isSubmitting = false;
+
+		if (!result.IsSuccess || result.User is null)
+		{
+			formMessage = result.ErrorMessage ?? "Login failed.";
+			return;
+		}
+
+		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
+	}
+
+	private async Task HandleSignupSubmit()
+	{
+		isSubmitting = true;
+		formMessage = string.Empty;
+
+		var result = await AuthSession.SignupAsync(new SignupRequest
+		{
+			Username = signupModel.Username,
+			Email = signupModel.Email,
+			Password = signupModel.Password,
+		});
+		isSubmitting = false;
+
+		if (!result.IsSuccess || result.User is null)
+		{
+			formMessage = result.ErrorMessage ?? "Signup failed.";
+			return;
+		}
+
+		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
+	}
+
+	[JSInvokable]
+	public async Task OnGoogleToken(string idToken)
+	{
+		isSubmitting = true;
+		formMessage = string.Empty;
+		await InvokeAsync(StateHasChanged);
+
+		var result = await AuthSession.GoogleLoginAsync(idToken);
+		isSubmitting = false;
+
+		if (!result.IsSuccess || result.User is null)
+		{
+			formMessage = result.ErrorMessage ?? "Google login failed.";
+			await InvokeAsync(StateHasChanged);
+			return;
+		}
+
+		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
+	}
+
+	private async Task<string> GetPostLoginUrlAsync(UserSession user)
+	{
+		if (await AuthSession.IsForumProfileSetupCompleteAsync(user))
+		{
+			return $"/{Uri.EscapeDataString(user.Username)}";
+		}
+
+		return GetProfileSetupUrl(user);
+	}
+
+	private static string GetProfileSetupUrl(UserSession user)
+	{
+		return user.UserId > 0
+			? $"/profile/setup/{user.UserId}"
+			: "/profile/setup";
+	}
+
+	public void Dispose()
+	{
+		dotNetReference?.Dispose();
+	}
+
+	private enum AuthMode
+	{
+		Login,
+		Signup
+	}
+
+	private sealed class LoginModel
+	{
+		[Required]
+		public string Username { get; set; } = string.Empty;
+
+		[Required]
+		public string Password { get; set; } = string.Empty;
+	}
+
+	private sealed class SignupModel
+	{
+		[Required]
+		public string Username { get; set; } = string.Empty;
+
+		[Required]
+		[EmailAddress]
+		public string Email { get; set; } = string.Empty;
+
+		[Required]
+		[MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+		[RegularExpression(@"^(?=.*[A-Za-z])(?=.*\d)[\s\S]+$", ErrorMessage = "Password must contain at least one letter and one number.")]
+		[DataType(DataType.Password)]
+		public string Password { get; set; } = string.Empty;
+
+		[Required]
+		[Compare(nameof(Password), ErrorMessage = "The passwords does not match each other.")]
+		public string ConfirmPassword { get; set; } = string.Empty;
+	}
+}
