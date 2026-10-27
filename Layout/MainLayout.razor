@@ -3,9 +3,9 @@
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject IJSRuntime JS
 
-<div class="min-h-screen bg-coffee-bean-950 text-porcelain-50">
+<div class="min-h-screen bg-linear-to-br from-coffee-bean-950 via-coffee-bean-900 to-fiery-terracotta-950 text-porcelain-50 [html[data-theme=light]_&]:from-porcelain-50 [html[data-theme=light]_&]:via-porcelain-100 [html[data-theme=light]_&]:to-porcelain-50">
     <div class="flex min-h-screen w-full flex-col lg:flex-row">
-        <aside class="border-b border-fiery-terracotta-700/40 bg-fiery-terracotta-900/80 px-6 py-5 backdrop-blur lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r lg:px-5">
+        <aside class="border-b border-fiery-terracotta-700/40 bg-linear-to-r from-fiery-terracotta-950 to-fiery-terracotta-900 px-6 py-5 [html[data-theme=light]_&]:from-fiery-terracotta-900 [html[data-theme=light]_&]:to-fiery-terracotta-800 lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r-0 lg:px-5">        
             <div class="mb-6 flex items-center justify-between">
                 <a href="/" class="text-lg font-semibold tracking-tight text-porcelain-50">
                     Music-R-Us
@@ -16,7 +16,7 @@
             <Navbar />
         </aside>
         <main class="flex-1">
-            <header class="border-b border-fiery-terracotta-700/40 bg-fiery-terracotta-900/80 px-6 py-4 backdrop-blur justify-between flex items-center">
+                <header class="flex items-center justify-between bg-linear-to-r from-fiery-terracotta-900 to-fiery-terracotta-950 px-6 py-4 [html[data-theme=light]_&]:from-fiery-terracotta-800 [html[data-theme=light]_&]:to-fiery-terracotta-900">             
                 @if (AuthSession.CurrentUser is not null)
                 {
                     <a href="/@AuthSession.CurrentUser.Username" class="inline-flex items-center gap-3 rounded-full border border-granite-400/30 bg-granite-500/80 px-2 py-1 pr-4 text-porcelain-50 transition hover:bg-granite-500">
@@ -43,9 +43,21 @@
                     </a>
                 }
 
-                <a class="text-sm font-medium text-granite-300 transition hover:text-porcelain-50 " href="/about"  rel="noreferrer" >
-                    About the app
-                </a>
+                <div class="flex items-center gap-3">
+                    <a class="text-sm font-medium text-granite-300 transition hover:text-porcelain-50"
+                    href="/about"
+                    rel="noreferrer">
+                        About the app
+                    </a>
+
+                    <button type="button"
+                            class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-granite-300 bg-coffee-bean-950 text-xl text-porcelain-50 transition hover:bg-coffee-bean-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50"
+                            @onclick="ToggleThemeAsync"
+                            aria-label="@(isLightMode ? "Switch to dark mode" : "Switch to light mode")"
+                            title="@(isLightMode ? "Switch to dark mode" : "Switch to light mode")">
+                        <span aria-hidden="true">@(isLightMode ? "☀" : "☾")</span>
+                    </button>
+                </div>
 
             </header>
 
@@ -66,6 +78,7 @@
 
 @code {
     private ForumProfile? HeaderProfile;
+    private bool isLightMode;
 
     protected override void OnInitialized()
     {
@@ -76,9 +89,16 @@
     {
         if (firstRender)
         {
+            var theme = await JS.InvokeAsync<string>("MusicRUsTheme.getTheme");
+
+            isLightMode = theme == "light";
+            StateHasChanged();
+
             await AuthSession.InitializeAsync();
             await LoadHeaderProfileAsync();
+
             await JS.InvokeVoidAsync("MusicRUsAuth.registerInactivityLogout", 30, "/loginpick");
+
             StateHasChanged();
         }
     }
@@ -90,6 +110,17 @@
             await LoadHeaderProfileAsync();
             StateHasChanged();
         });
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        var requestedTheme = isLightMode ? "dark" : "light";
+
+        var appliedTheme = await JS.InvokeAsync<string>(
+            "MusicRUsTheme.setTheme", 
+            requestedTheme);
+
+        isLightMode = appliedTheme == "light";
     }
 
     private async Task LoadHeaderProfileAsync()
