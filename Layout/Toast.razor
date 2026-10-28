@@ -1,0 +1,72 @@
+@implements IDisposable
+@inject MusicRUs.Services.ToastService ToastService
+
+<div role="status" aria-live="polite" aria-atomic="true">
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="fixed bottom-6 right-6 z-50
+                    max-w-[calc(100vw-3rem)] rounded-xl
+                    border border-green-300 bg-green-800
+                    px-5 py-3.5 text-white shadow-xl">
+            @message
+        </div>
+    }
+</div>
+
+@code {
+    private string? message;
+    private CancellationTokenSource? hideTimer;
+    private bool disposed;
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += HandleShow;
+    }
+
+    private void HandleShow(string text)
+    {
+        _ = InvokeAsync(() => ShowAsync(text));
+    }
+
+    private async Task ShowAsync(string text)
+    {
+        if (disposed)
+            return;
+
+        // A new message restarts the three-second timer.
+        hideTimer?.Cancel();
+
+        using var timer = new CancellationTokenSource();
+        hideTimer = timer;
+
+        message = text;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(3000, timer.Token);
+
+            if (!disposed)
+            {
+                message = null;
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Another message arrived, or the component was removed.
+        }
+        finally
+        {
+            if (ReferenceEquals(hideTimer, timer))
+                hideTimer = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        ToastService.OnShow -= HandleShow;
+        hideTimer?.Cancel();
+    }
+}

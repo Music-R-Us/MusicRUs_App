@@ -3,7 +3,7 @@
 @layout MainLayout
 
 @using System.ComponentModel.DataAnnotations
-
+@inject MusicRUs.Services.ToastService ToastService
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -157,6 +157,8 @@
 			return;
 		}
 
+		ToastService?.Show("Logged in successfully");
+
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
 
@@ -178,6 +180,8 @@
 			formMessage = result.ErrorMessage ?? "Signup failed.";
 			return;
 		}
+
+		ToastService?.Show("Account created successfully");
 
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}

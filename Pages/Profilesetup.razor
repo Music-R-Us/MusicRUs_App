@@ -8,6 +8,7 @@
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject NavigationManager Navigation
 @inject MusicRUs.Services.ProfileColorService ProfileColors
+@inject MusicRUs.Services.ToastService ToastService
 
 <PageTitle>Set up profile</PageTitle>
 
@@ -231,6 +232,8 @@
 			formMessage = "Could not save your profile. Check the details and try again.";
 			return;
 		}
+		
+		ToastService.Show("Profile saved");
 
 		Navigation.NavigateTo($"/{Uri.EscapeDataString(AuthSession.CurrentUser.Username)}");
 	}

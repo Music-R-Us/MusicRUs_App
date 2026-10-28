@@ -13,7 +13,7 @@ builder.Services.AddScoped<BackendApiClient>();
 builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<ForumProfileService>();
 builder.Services.AddScoped<ProfileColorService>();
-
+builder.Services.AddScoped<ToastService>();
 
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");

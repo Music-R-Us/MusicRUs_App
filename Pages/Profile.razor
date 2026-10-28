@@ -4,6 +4,7 @@
 @layout MainLayout
 
 @inject MusicRUs.Services.AuthSessionService AuthSession
+@inject MusicRUs.Services.ToastService ToastService
 @inject NavigationManager Navigation
 
 <PageTitle>@(CurrentProfile?.DisplayName ?? DisplayUsername) Profile</PageTitle>
@@ -129,6 +130,9 @@
 	private async Task SignOutAsync()
 	{
 		await AuthSession.SignOutAsync();
+
+		ToastService?.Show("Logged out successfully");
+
 		Navigation.NavigateTo("/loginpick");
 	}
 
