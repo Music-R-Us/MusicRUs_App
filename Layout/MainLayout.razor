@@ -2,6 +2,9 @@
 
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject IJSRuntime JS
+@implements IDisposable
+@inject MusicRUs.Services.ProfileColorService ProfileColors
+
 
 <div class="min-h-screen bg-linear-to-br from-coffee-bean-950 via-coffee-bean-900 to-fiery-terracotta-950 text-porcelain-50 [html[data-theme=light]_&]:from-porcelain-50 [html[data-theme=light]_&]:via-porcelain-100 [html[data-theme=light]_&]:to-porcelain-50">
     <div class="flex min-h-screen w-full flex-col lg:flex-row">
@@ -19,26 +22,26 @@
                 <header class="flex items-center justify-between bg-linear-to-r from-fiery-terracotta-900 to-fiery-terracotta-950 px-6 py-4 [html[data-theme=light]_&]:from-fiery-terracotta-800 [html[data-theme=light]_&]:to-fiery-terracotta-900">             
                 @if (AuthSession.CurrentUser is not null)
                 {
-                    <a href="/@AuthSession.CurrentUser.Username" class="inline-flex items-center gap-3 rounded-full border border-granite-400/30 bg-granite-500/80 px-2 py-1 pr-4 text-porcelain-50 transition hover:bg-granite-500">
+                    <a href="/@AuthSession.CurrentUser.Username" style="@($"background-color: {headerColor}; color: {MusicRUs.Services.ProfileColorService.TextColor(headerColor)};")" class="inline-flex items-center gap-3 rounded-full border border-granite-400/30 px-2 py-1 pr-4 transition">
                         @if (!string.IsNullOrWhiteSpace(HeaderAvatarUrl))
                         {
-                            <img src="@HeaderAvatarUrl" alt="@HeaderDisplayName avatar" class="h-9 w-9 rounded-full bg-pine-teal-300 object-cover" />
+                            <img src="@HeaderAvatarUrl" alt="@HeaderDisplayName avatar" class="h-9 w-9 rounded-full bg-granite-300 object-cover" />
                         }
                         else
                         {
-                            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-pine-teal-300 text-sm font-semibold uppercase text-coffee-bean-950">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-granite-300 text-sm font-semibold uppercase text-coffee-bean-950">
                                 @HeaderAvatarInitial
                             </span>
                         }
                         <span class="grid text-left leading-tight">
-                            <span class="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-pine-teal-300">Profile</span>
+                            <span class="text-[0.65rem] font-medium uppercase tracking-[0.2em]">Profile</span>
                             <span class="text-sm font-semibold">@HeaderDisplayName</span>
                         </span>
                     </a>
                 }
                 else
                 {
-                    <a href="/loginpick" class="rounded-full border border-granite-400/30 bg-granite-500/80 px-2 py-1 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-pine-teal-300 transition hover:bg-granite-500">
+                    <a href="/loginpick" class="rounded-full border border-granite-400/30 bg-granite-500/80 px-2 py-1 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-granite-300 transition hover:bg-granite-500">
                         Login/Signup
                     </a>
                 }
@@ -79,10 +82,12 @@
 @code {
     private ForumProfile? HeaderProfile;
     private bool isLightMode;
+    private string headerColor = MusicRUs.Services.ProfileColorService.DefaultColor;
 
     protected override void OnInitialized()
     {
         AuthSession.Changed += OnAuthSessionChanged;
+        ProfileColors.Changed += OnAuthSessionChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -128,10 +133,16 @@
         if (AuthSession.CurrentUser is null || AuthSession.CurrentUser.UserId <= 0)
         {
             HeaderProfile = null;
+            headerColor = MusicRUs.Services.ProfileColorService.DefaultColor;
             return;
         }
 
-        HeaderProfile = await AuthSession.GetForumProfileAsync(AuthSession.CurrentUser.UserId);
+        var userId = AuthSession.CurrentUser.UserId;
+        var profile = await AuthSession.GetForumProfileAsync(userId);
+        var color = await ProfileColors.GetAsync(userId);
+        if (AuthSession.CurrentUser?.UserId != userId) return;
+        HeaderProfile = profile;
+        headerColor = color;
     }
 
     private string HeaderDisplayName
@@ -173,5 +184,6 @@
     public void Dispose()
     {
         AuthSession.Changed -= OnAuthSessionChanged;
+        ProfileColors.Changed -= OnAuthSessionChanged;
     }
 }

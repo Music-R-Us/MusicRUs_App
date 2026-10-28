@@ -7,13 +7,14 @@
 
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject NavigationManager Navigation
+@inject MusicRUs.Services.ProfileColorService ProfileColors
 
 <PageTitle>Set up profile</PageTitle>
 
 <section class="mx-auto w-full max-w-4xl">
 	<div class="grid gap-8 rounded-4xl border border-granite-800/80 gradient-surface p-8 backdrop-blur">
 		<div class="grid gap-3">
-			<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Forum profile</p>
+			<p class="text-sm font-semibold uppercase tracking-[0.3em] text-granite-300">Forum profile</p>
 			<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">Set up your profile</h1>
 			<p class="max-w-2xl text-base leading-7 text-porcelain-50/80">
 				Choose how you show up in the MusicRUs forum.
@@ -40,6 +41,25 @@
 				<ValidationSummary class="text-sm text-fiery-terracotta-200" />
 
 				<div class="grid gap-5">
+					<div class="grid gap-3">
+						<label for="profile-color" class="text-sm font-medium text-porcelain-50">Top bar profile color</label>
+						<div class="flex flex-wrap items-center gap-3">
+							<input id="profile-color" type="color" value="@SelectedHex" @oninput="PickColor" disabled="@isSaving"
+								aria-describedby="profile-color-help" class="h-12 w-16 cursor-pointer rounded-xl border border-granite-800/80 bg-coffee-bean-950/60 p-1 disabled:opacity-60" />
+							<label for="profile-color-hex" class="text-sm text-porcelain-50">HEX</label>
+							<input id="profile-color-hex" type="text" @bind="selectedColor" @bind:event="oninput"
+								pattern="#[0-9a-fA-F]{6}" maxlength="7" required disabled="@isSaving"
+								title="Enter # followed by six hexadecimal digits, for example #66706C"
+								class="w-32 rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 font-mono text-porcelain-50 outline-none focus:border-fiery-terracotta-300" />
+						</div>
+						<p id="profile-color-help" class="text-sm text-porcelain-50/70">Choose a color for your name badge in the top bar. Saved in this browser.</p>
+						<div class="flex flex-wrap items-center gap-3">
+							<span class="rounded-full px-4 py-2 text-sm font-semibold" style="@($"background-color: {SelectedHex}; color: {MusicRUs.Services.ProfileColorService.TextColor(SelectedHex)};")">
+								@(string.IsNullOrWhiteSpace(profileModel.DisplayName) ? "Your name" : profileModel.DisplayName)
+							</span>
+							<button type="button" disabled="@isSaving" @onclick="ResetColor" class="text-sm text-granite-300 underline">Reset color</button>
+						</div>
+					</div>
 					<div class="grid gap-2 sm:grid-cols-2">
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="display-name">Display name</label>
@@ -102,6 +122,11 @@
 	private bool isSaving;
 	private string formMessage = string.Empty;
 	private ProfileSetupModel profileModel = new();
+	private string selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
+	private string SelectedHex => MusicRUs.Services.ProfileColorService.Normalize(selectedColor);
+	private static readonly string[] PresetColors = ["#66706C", "#2DD4BF", "#F97316", "#3B82F6", "#A855F7", "#EC4899", "#EAB308", "#FFFFFF"];
+	private void ResetColor() => selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
+	private void PickColor(ChangeEventArgs args) => selectedColor = MusicRUs.Services.ProfileColorService.Normalize(args.Value?.ToString());
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -127,6 +152,7 @@
 		var resolvedUserId = currentUserId;
 		var profile = await AuthSession.GetForumProfileAsync(resolvedUserId);
 		profileModel = ProfileSetupModel.FromProfile(profile, AuthSession.CurrentUser, resolvedUserId);
+		selectedColor = await ProfileColors.GetAsync(resolvedUserId);
 		isReady = true;
 	}
 
@@ -142,6 +168,7 @@
 		formMessage = string.Empty;
 
 		var saved = await AuthSession.SaveForumProfileAsync(profileModel.ToForumProfile());
+		if (saved) await ProfileColors.SaveAsync(profileModel.UserId, SelectedHex);
 		isSaving = false;
 
 		if (!saved)

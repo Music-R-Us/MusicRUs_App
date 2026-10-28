@@ -12,6 +12,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddScoped<BackendApiClient>();
 builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<ForumProfileService>();
+builder.Services.AddScoped<ProfileColorService>();
 
 
 builder.RootComponents.Add<App>("#app");

@@ -1,12 +1,9 @@
 @import "tailwindcss";
 @source "../Pages/**/*.razor";
 @source "../Layout/**/*.razor";
-@source "../Pages/**/*.razor";
 @source "../Components/**/*.razor";
 @source "../*.razor";
 @source "../wwwroot/index.html";
-
-@source "../Components/**/*.razor";
 
 @theme {
 	--color-coffee-bean-50: #f5f0f0;

@@ -14,11 +14,11 @@
 			<div class="flex items-center gap-5">
 				@if (HasAvatar)
 				{
-					<img src="@CurrentProfile?.AvatarUrl" alt="@DisplayUsername avatar" class="h-20 w-20 rounded-full bg-pine-teal-300 object-cover" />
+					<img src="@CurrentProfile?.AvatarUrl" alt="@DisplayUsername avatar" class="h-20 w-20 rounded-full bg-granite-300 object-cover" />
 				}
 				else
 				{
-					<div class="flex h-20 w-20 items-center justify-center rounded-full bg-pine-teal-300 text-3xl font-semibold text-coffee-bean-950">
+					<div class="flex h-20 w-20 items-center justify-center rounded-full bg-granite-300 text-3xl font-semibold text-coffee-bean-950">
 						@ProfileInitial
 					</div>
 				}
@@ -31,7 +31,7 @@
 			@if (CanEditProfile)
 			{
 				<div class="flex flex-wrap gap-3 sm:self-center">
-					<a href="@EditProfileUrl" class="self-start rounded-full border border-pine-teal-300/60 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-pine-teal-300 transition hover:bg-granite-800 sm:self-center">
+					<a href="@EditProfileUrl" class="self-start rounded-full border border-granite-300/60 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-granite-300 transition hover:bg-granite-800 sm:self-center">
 						Edit profile
 					</a>
 					<button type="button"
@@ -53,7 +53,7 @@
 		{
 			<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
 				<div>
-					<p class="text-sm font-semibold uppercase tracking-[0.25em] text-pine-teal-300">Profile Information</p>
+					<p class="text-sm font-semibold uppercase tracking-[0.25em] text-granite-300">Profile Information</p>
 				</div>
 				<div class="grid gap-2 text-sm sm:grid-cols-2">
 					<div class="rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
