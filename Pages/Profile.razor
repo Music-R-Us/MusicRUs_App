@@ -9,7 +9,7 @@
 <PageTitle>@(CurrentProfile?.DisplayName ?? DisplayUsername) Profile</PageTitle>
 
 <section class="w-full">
-	<div class="grid gap-6 rounded-4xl border border-granite-800/80 gradient-surface p-8 backdrop-blur">
+	<div class="grid gap-6 rounded-4xl border border-granite-800/80 bg-linear-to-br from-(--profile-start) to-(--profile-end) p-8 shadow-xl backdrop-blur" style="@ProfileBackgroundStyle">
 		<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-5">
 				@if (HasAvatar)
@@ -56,11 +56,11 @@
 					<p class="text-sm font-semibold uppercase tracking-[0.25em] text-granite-300">Profile Information</p>
 				</div>
 				<div class="grid gap-2 text-sm sm:grid-cols-2">
-					<div class="rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
+					<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
 						<p class="text-porcelain-50/60">Location</p>
 						<p class="text-xl font-semibold text-porcelain-50">@(string.IsNullOrWhiteSpace(CurrentProfile.Location) ? "Not set" : CurrentProfile.Location)</p>
 					</div>
-					<div class="rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
+					<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
 						<p class="text-porcelain-50/60">Visibility</p>
 						<p class="text-xl font-semibold text-porcelain-50">@(CurrentProfile.IsPublic ? "Public" : "Private")</p>
 					</div>
@@ -79,6 +79,18 @@
 
 	private ForumProfile? CurrentProfile;
 	private UserSession? ViewedUser;
+
+	private static string SafeColor(string? value, string fallback)
+	{
+		return value is { Length: 7 }
+			&& value[0] == '#'
+			&& value.Skip(1).All(Uri.IsHexDigit) ? value : fallback;
+	}
+
+	private string ProfileBackgroundStyle =>
+		$"--profile-start: {SafeColor(CurrentProfile?.BackgroundStartColor, "#2E0B05")}; " +
+		$"--profile-end: {SafeColor(CurrentProfile?.BackgroundEndColor, "#B82A14")};";
+
 	protected override async Task OnParametersSetAsync()
 	{
 		await AuthSession.InitializeAsync();

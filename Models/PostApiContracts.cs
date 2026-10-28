@@ -39,6 +39,8 @@ public sealed class ForumProfile
 	public string Location { get; set; } = string.Empty;
 	public string WebsiteUrl { get; set; } = string.Empty;
 	public bool IsPublic { get; set; } = true;
+	public string BackgroundStartColor { get; set; } = "#2E0B05";
+	public string BackgroundEndColor { get; set; } = "#B82A14";
 	public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 	public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -97,6 +99,8 @@ public sealed class UpdateForumProfileRequest
 	public string? WebsiteUrl { get; set; }
 
 	public bool? IsPublic { get; set; }
+	public string? BackgroundStartColor { get; set; }
+	public string? BackgroundEndColor { get; set; }
 
 	public DateTimeOffset? UpdatedAt { get; set; }
 

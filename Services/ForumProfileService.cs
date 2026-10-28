@@ -123,6 +123,8 @@ public sealed class ForumProfileService
 			Location = EmptyToNull(profile.Location),
 			WebsiteUrl = EmptyToNull(profile.WebsiteUrl),
 			IsPublic = profile.IsPublic,
+			BackgroundStartColor = EmptyToNull(profile.BackgroundStartColor),
+			BackgroundEndColor = EmptyToNull(profile.BackgroundEndColor),
 			UpdatedAt = profile.UpdatedAt
 		};
 

@@ -60,6 +60,60 @@
 							<button type="button" disabled="@isSaving" @onclick="ResetColor" class="text-sm text-granite-300 underline">Reset color</button>
 						</div>
 					</div>
+					<fieldset class="grid gap-4 rounded-2xl border border-granite-800/80
+									bg-coffee-bean-950/60 p-5">
+						<legend class="px-2 text-sm font-semibold text-granite-300">
+							Profile background
+						</legend>
+
+						<div class="grid gap-4 sm:grid-cols-2">
+							<div class="grid gap-2">
+								<label for="gradient-start"
+									class="text-sm font-medium text-porcelain-50">
+									Start color
+								</label>
+
+								<input id="gradient-start"
+									type="color"
+									@bind="profileModel.BackgroundStartColor"
+									@bind:event="oninput"
+									disabled="@isSaving"
+									class="h-12 w-full cursor-pointer rounded-xl border
+											border-granite-800 bg-coffee-bean-950 p-1
+											focus-visible:outline-2
+											focus-visible:outline-granite-300" />
+							</div>
+
+							<div class="grid gap-2">
+								<label for="gradient-end"
+									class="text-sm font-medium text-porcelain-50">
+									End color
+								</label>
+
+								<input id="gradient-end"
+									type="color"
+									@bind="profileModel.BackgroundEndColor"
+									@bind:event="oninput"
+									disabled="@isSaving"
+									class="h-12 w-full cursor-pointer rounded-xl border
+											border-granite-800 bg-coffee-bean-950 p-1
+											focus-visible:outline-2
+											focus-visible:outline-granite-300" />
+							</div>
+							<div class="rounded-2xl bg-linear-to-br from-(--profile-start) to-(--profile-end) p-6"style="@GradientPreviewStyle">
+								<div class="rounded-xl bg-coffee-bean-950/80 p-4">
+									<p class="text-xs font-semibold uppercase tracking-widest
+											text-granite-300">
+										Preview
+									</p>
+
+									<p class="mt-2 text-2xl font-semibold text-porcelain-50">
+										@profileModel.DisplayName
+									</p>
+								</div>
+							</div>
+						</div>
+					</fieldset>
 					<div class="grid gap-2 sm:grid-cols-2">
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="display-name">Display name</label>
@@ -117,7 +171,6 @@
 @code {
 	[Parameter]
 	public int UserId { get; set; }
-
 	private bool isReady;
 	private bool isSaving;
 	private string formMessage = string.Empty;
@@ -127,7 +180,9 @@
 	private static readonly string[] PresetColors = ["#66706C", "#2DD4BF", "#F97316", "#3B82F6", "#A855F7", "#EC4899", "#EAB308", "#FFFFFF"];
 	private void ResetColor() => selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
 	private void PickColor(ChangeEventArgs args) => selectedColor = MusicRUs.Services.ProfileColorService.Normalize(args.Value?.ToString());
-
+	private string GradientPreviewStyle =>
+		$"--profile-start: {profileModel.BackgroundStartColor}; " +
+		$"--profile-end: {profileModel.BackgroundEndColor};";
 	protected override async Task OnParametersSetAsync()
 	{
 		var initialized = await AuthSession.InitializeAsync();
@@ -218,7 +273,14 @@
 		public string WebsiteUrl { get; set; } = string.Empty;
 
 		public bool IsPublic { get; set; } = true;
+		
+		[Required]
+		[RegularExpression("^#[0-9a-fA-F]{6}$")]
+		public string BackgroundStartColor { get; set; } = "#2E0B05";
 
+		[Required]
+		[RegularExpression("^#[0-9a-fA-F]{6}$")]
+		public string BackgroundEndColor { get; set; } = "#B82A14";
 
 		public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
@@ -236,6 +298,8 @@
 				Location = profile?.Location ?? string.Empty,
 				WebsiteUrl = profile?.WebsiteUrl ?? string.Empty,
 				IsPublic = profile?.IsPublic ?? true,
+				BackgroundStartColor = profile?.BackgroundStartColor ?? "#2E0B05",
+				BackgroundEndColor = profile?.BackgroundEndColor ?? "#B82A14",
 				CreatedAt = profile?.CreatedAt ?? DateTimeOffset.UtcNow,
 				UpdatedAt = profile?.UpdatedAt ?? DateTimeOffset.UtcNow
 			};
@@ -253,6 +317,8 @@
 				Location = Location.Trim(),
 				WebsiteUrl = WebsiteUrl.Trim(),
 				IsPublic = IsPublic,
+				BackgroundStartColor = BackgroundStartColor,
+				BackgroundEndColor = BackgroundEndColor,
 				CreatedAt = CreatedAt,
 				UpdatedAt = DateTimeOffset.UtcNow
 			};
