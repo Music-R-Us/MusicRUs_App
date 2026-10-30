@@ -100,7 +100,7 @@ window.addEventListener("pageshow", (event) => {
     }
 });
 
-window.initGoogleSignIn = (dotnetRef) => {
+window.initGoogleSignIn = (dotnetRef, buttonText = "continue_with") => {
     const button = document.getElementById("google-btn");
     if (!button || !dotnetRef) {
         return;
@@ -114,7 +114,7 @@ window.initGoogleSignIn = (dotnetRef) => {
 
         button.innerHTML = "";
         window.google.accounts.id.initialize({
-            client_id: "517391008713-pfep2mr1qepjcds929kfki412kt6gfg9.apps.googleusercontent.com",
+            client_id: "1086295760706-3qic42cjff6dbej8836dmeiakgv16leh.apps.googleusercontent.com",
             callback: (response) => {
                 dotnetRef.invokeMethodAsync("OnGoogleToken", response.credential);
             }
@@ -122,6 +122,7 @@ window.initGoogleSignIn = (dotnetRef) => {
         window.google.accounts.id.renderButton(button, {
             theme: "outline",
             size: "large",
+            text: buttonText,
             width: Math.min(360, button.clientWidth || 360)
         });
     };
