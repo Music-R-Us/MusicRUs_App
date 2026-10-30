@@ -24,7 +24,7 @@
                 <header class="flex items-center justify-between bg-linear-to-r from-fiery-terracotta-900 to-fiery-terracotta-950 px-6 py-4 [html[data-theme=light]_&]:from-fiery-terracotta-800 [html[data-theme=light]_&]:to-fiery-terracotta-900">             
                 @if (AuthSession.CurrentUser is not null)
                 {
-                    <a href="/@AuthSession.CurrentUser.Username" style="@($"background-color: {headerColor}; color: {MusicRUs.Services.ProfileColorService.TextColor(headerColor)};")" class="inline-flex items-center gap-3 rounded-full border border-granite-400/30 px-2 py-1 pr-4 transition">
+                    <a href="@($"/profile/{AuthSession.CurrentUser.UserId}")" style="@($"background-color: {headerColor}; color: {MusicRUs.Services.ProfileColorService.TextColor(headerColor)};")" class="inline-flex items-center gap-3 rounded-full border border-granite-400/30 px-2 py-1 pr-4 transition">
                         @if (!string.IsNullOrWhiteSpace(HeaderAvatarUrl))
                         {
                             <img src="@HeaderAvatarUrl" alt="@HeaderDisplayName avatar" class="h-9 w-9 rounded-full bg-granite-300 object-cover" />

@@ -187,6 +187,28 @@ public sealed class AuthSessionService
 		return saved;
 	}
 
+	public async Task<List<GenreOption>> GetGenresAsync(CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await apiClient.GetAsync<List<GenreOption>>("api/Genre", CurrentUser?.AccessToken, cancellationToken) ?? [];
+	}
+
+	public async Task<List<MusicArtist>> SearchArtistsAsync(string query, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		if (query.Trim().Length < 2) return [];
+		return await apiClient.GetAsync<List<MusicArtist>>(
+			$"api/Artist/search?keyword={Uri.EscapeDataString(query.Trim())}", CurrentUser?.AccessToken, cancellationToken) ?? [];
+	}
+
+	public async Task<List<MusicAlbum>> SearchAlbumsAsync(string query, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		if (query.Trim().Length < 2) return [];
+		return await apiClient.GetAsync<List<MusicAlbum>>(
+			$"api/Album/search?keyword={Uri.EscapeDataString(query.Trim())}", CurrentUser?.AccessToken, cancellationToken) ?? [];
+	}
+
 	private static bool IsPrerenderInteropException(InvalidOperationException exception)
 	{
 		return exception.Message.Contains("JavaScript interop calls cannot be issued at this time", StringComparison.Ordinal);

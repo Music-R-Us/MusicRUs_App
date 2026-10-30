@@ -222,7 +222,7 @@
 	{
 		if (await AuthSession.IsForumProfileSetupCompleteAsync(user))
 		{
-			return $"/{Uri.EscapeDataString(user.Username)}";
+			return $"/profile/{user.UserId}";
 		}
 
 		return GetProfileSetupUrl(user);

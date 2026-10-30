@@ -1,9 +1,26 @@
-@* This is a simple navigation menu *@
-<nav class="flex flex-col gap-2 text-sm font-medium text-granite-300">
-    <NavLink class="rounded-xl px-4 py-3 transition hover:bg-coffee-bean-800 hover:text-porcelain-50" href="" Match="NavLinkMatch.All" ActiveClass="bg-granite-400/10 text-granite-300 ring-1 ring-inset ring-granite-400/20">
+<nav class="flex flex-col gap-1.5 border-t border-porcelain-50/10 pt-4" aria-label="Main navigation">
+    <NavLink class="@LinkClasses" href="" Match="NavLinkMatch.All">
         Home
     </NavLink>
 
+    <NavLink class="@LinkClasses" href="posts">
+        Posts
+    </NavLink>
 
+    <NavLink class="@LinkClasses" href="music">
+        Music
+    </NavLink>
+
+    <NavLink class="@LinkClasses" href="collection">
+        My Collection
+    </NavLink>
+
+    <NavLink class="@LinkClasses" href="friendships">
+        Friendships
+    </NavLink>
 </nav>
+
+@code {
+    private const string LinkClasses = "relative flex min-h-12 items-center rounded-2xl border border-transparent px-5 py-3 text-sm font-medium text-granite-200 no-underline transition-colors duration-150 hover:border-porcelain-50/10 hover:bg-porcelain-50/6 hover:text-porcelain-50 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-granite-300 motion-reduce:transition-none before:absolute before:left-2 before:h-4 before:w-0.5 before:rounded-full before:bg-granite-300 before:opacity-0 before:transition-opacity before:duration-150 hover:before:opacity-50 motion-reduce:before:transition-none [&.active]:border-granite-300/25 [&.active]:bg-granite-300/12 [&.active]:text-granite-100 [&.active]:before:opacity-100";
+}
 

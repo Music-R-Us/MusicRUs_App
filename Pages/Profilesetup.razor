@@ -4,6 +4,7 @@
 @layout MainLayout
 
 @using System.ComponentModel.DataAnnotations
+@implements IDisposable
 
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject NavigationManager Navigation
@@ -76,7 +77,7 @@
 
 								<input id="gradient-start"
 									type="color"
-									@bind="profileModel.BackgroundStartColor"
+									@bind="profileModel.PrimaryColor"
 									@bind:event="oninput"
 									disabled="@isSaving"
 									class="h-12 w-full cursor-pointer rounded-xl border
@@ -93,7 +94,7 @@
 
 								<input id="gradient-end"
 									type="color"
-									@bind="profileModel.BackgroundEndColor"
+									@bind="profileModel.AccentColor"
 									@bind:event="oninput"
 									disabled="@isSaving"
 									class="h-12 w-full cursor-pointer rounded-xl border
@@ -138,11 +139,169 @@
 							<InputText id="avatar-url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.AvatarUrl" />
 						</div>
 
+						<div class="grid gap-2">
+							<label class="text-sm font-medium text-porcelain-50" for="favorite-genre">Favorite genre</label>
+							<div class="flex gap-2">
+								<input id="favorite-genre" class="min-w-0 flex-1 rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind="genreSearch" @bind:event="oninput" />
+								<button type="button" @onclick="SetFavoriteGenre" class="self-end rounded-2xl border-2 border-porcelain-50/80 bg-pine-teal-700 px-4 py-4 text-sm font-bold text-porcelain-50 shadow-sm shadow-black/20 transition bg-fiery-terracotta-900/80 hover:border-porcelain-50 hover:bg-pine-teal-600">
+									Set Favorite
+								</button>
+							</div>
+						</div>
 					</div>
+
+					@if (FilteredGenres.Count > 0 || profileModel.Tags.Count > 0 || !string.IsNullOrWhiteSpace(draftFavoriteGenre))
+					{
+						<div class="grid gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4">
+							<div class="flex flex-wrap gap-2">
+								@foreach (var genre in FilteredGenres)
+								{
+								<button type="button" @onclick="() => SelectGenre(genre.Name)" class="rounded-full border-2 border-pine-teal-300/70 bg-granite-900/80 px-3 py-1 text-sm font-semibold text-porcelain-50 shadow-sm shadow-black/20 transition hover:border-pine-teal-200 hover:bg-granite-800">
+										@genre.Name
+									</button>
+								}
+							</div>
+							<div class="flex flex-wrap gap-2">
+								@if (!string.IsNullOrWhiteSpace(draftFavoriteGenre))
+								{
+									<span class="rounded-full border border-pine-teal-300/70 bg-granite-900/80 px-3 py-1 text-sm font-semibold text-porcelain-50">Favorite: @draftFavoriteGenre</span>
+								}
+								@foreach (var tag in profileModel.Tags)
+								{
+									<button type="button" @onclick="() => RemoveGenreTag(tag)" class="rounded-full border border-granite-700 bg-fiery-terracotta-950/70 px-3 py-1 text-sm text-porcelain-50">
+										#@tag x
+									</button>
+								}
+							</div>
+						</div>
+					}
+
 
 					<div class="grid gap-2">
 						<label class="text-sm font-medium text-porcelain-50" for="website-url">Website URL</label>
 						<InputText id="website-url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.WebsiteUrl" />
+					</div>
+
+					<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+						<div class="grid gap-2">
+							<label class="text-sm font-medium text-porcelain-50" for="artist-search">Favorite artist</label>
+							<input id="artist-search" value="@artistSearch" @oninput="OnArtistSearchInputAsync" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" />
+						</div>
+						@if (isSearchingArtists)
+						{
+							<p class="text-sm text-porcelain-50/60">Searching...</p>
+						}
+						@if (artistResults.Count > 0)
+						{
+							<div class="grid gap-2 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/70 p-3">
+								@foreach (var artist in artistResults)
+								{
+									<button type="button" @onclick="() => SelectArtistResult(artist)" class="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-porcelain-50 transition hover:bg-granite-900/80">
+										@if (!string.IsNullOrWhiteSpace(artist.ImageUrl))
+										{
+											<img src="@artist.ImageUrl" alt="@artist.Name" class="h-10 w-10 rounded-lg object-cover" />
+										}
+										<span class="font-semibold">@artist.Name</span>
+									</button>
+								}
+							</div>
+						}
+						@if (artistResult is not null)
+						{
+							<div class="flex flex-col gap-3 rounded-2xl border border-granite-800/80 bg-fiery-terracotta-950/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+								<div class="flex items-center gap-3">
+									@if (!string.IsNullOrWhiteSpace(artistResult.ImageUrl))
+									{
+										<img src="@artistResult.ImageUrl" alt="@artistResult.Name" class="h-14 w-14 rounded-xl object-cover" />
+									}
+									<p class="font-semibold text-porcelain-50">@artistResult.Name</p>
+								</div>
+								<button type="button" @onclick="AddFavoriteArtist" class="rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
+							</div>
+						}
+						<div class="flex flex-wrap gap-2">
+							@foreach (var artist in profileModel.FavoriteArtists)
+							{
+								<button type="button" @onclick="() => RemoveFavoriteArtist(artist.Id)" class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1 text-sm text-porcelain-50">
+									@artist.Name x
+								</button>
+							}
+						</div>
+					</div>
+
+					<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+						<div class="grid gap-2">
+							<label class="text-sm font-medium text-porcelain-50" for="album-search">Favorite album or collection item</label>
+							<input id="album-search" value="@albumSearch" @oninput="OnAlbumSearchInputAsync" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" />
+						</div>
+						@if (isSearchingAlbums)
+						{
+							<p class="text-sm text-porcelain-50/60">Searching...</p>
+						}
+						@if (albumResults.Count > 0)
+						{
+							<div class="grid gap-2 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/70 p-3">
+								@foreach (var album in albumResults)
+								{
+									<button type="button" @onclick="() => SelectAlbumResult(album)" class="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-porcelain-50 transition hover:bg-granite-900/80">
+										@if (!string.IsNullOrWhiteSpace(album.ImageUrl))
+										{
+											<img src="@album.ImageUrl" alt="@album.Title" class="h-10 w-10 rounded-lg object-cover" />
+										}
+										<span>
+											<span class="block font-semibold">@album.Title</span>
+											@if (!string.IsNullOrWhiteSpace(album.ReleaseDate))
+											{
+												<span class="text-xs text-porcelain-50/60">@album.ReleaseDate</span>
+											}
+										</span>
+									</button>
+								}
+							</div>
+						}
+						@if (albumResult is not null)
+						{
+							<div class="flex flex-col gap-3 rounded-2xl border border-granite-800/80 bg-fiery-terracotta-950/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+								<div class="flex items-center gap-3">
+									@if (!string.IsNullOrWhiteSpace(albumResult.ImageUrl))
+									{
+										<img src="@albumResult.ImageUrl" alt="@albumResult.Title" class="h-14 w-14 rounded-xl object-cover" />
+									}
+									<div>
+										<p class="font-semibold text-porcelain-50">@albumResult.Title</p>
+										<p class="text-sm text-porcelain-50/60">@albumResult.ReleaseDate</p>
+									</div>
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<button type="button" @onclick="AddFavoriteAlbum" class="rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
+									<button type="button" @onclick="AddCollectionAlbum" class="rounded-2xl border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50">Add collection</button>
+								</div>
+							</div>
+						}
+						<div class="grid gap-2 sm:grid-cols-2">
+							<div class="grid gap-2">
+								<p class="text-sm font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Favorite albums</p>
+								<div class="flex flex-wrap gap-2">
+									@foreach (var album in profileModel.FavoriteAlbums)
+									{
+										<button type="button" @onclick="() => RemoveFavoriteAlbum(album.Id)" class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1 text-sm text-porcelain-50">
+											@album.Title x
+										</button>
+									}
+								</div>
+							</div>
+							<div class="grid gap-2">
+								<p class="text-sm font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Music collection</p>
+								<div class="flex flex-wrap gap-2">
+									@foreach (var album in profileModel.MusicCollection)
+									{
+										<button type="button" @onclick="() => RemoveCollectionAlbum(album.Id)" class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1 text-sm text-porcelain-50">
+											@album.Title x
+										</button>
+									}
+								</div>
+							</div>
+						</div>
 					</div>
 
 					<label class="flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 text-sm font-medium text-porcelain-50">
@@ -175,6 +334,26 @@
 	private bool isReady;
 	private bool isSaving;
 	private string formMessage = string.Empty;
+	private string genreSearch = string.Empty;
+	private string draftFavoriteGenre = string.Empty;
+	private string artistSearch = string.Empty;
+	private string albumSearch = string.Empty;
+	private List<GenreOption> genres = [];
+	private List<MusicArtist> artistResults = [];
+	private List<MusicAlbum> albumResults = [];
+	private MusicArtist? artistResult;
+	private MusicAlbum? albumResult;
+	private CancellationTokenSource? artistSearchDebounce;
+	private CancellationTokenSource? albumSearchDebounce;
+	private bool isSearchingArtists;
+	private bool isSearchingAlbums;
+
+	private List<GenreOption> FilteredGenres => genres
+		.Where(genre => !string.IsNullOrWhiteSpace(genre.Name))
+		.Where(genre => string.IsNullOrWhiteSpace(genreSearch) || genre.Name.Contains(genreSearch, StringComparison.OrdinalIgnoreCase))
+		.Take(12)
+		.ToList();
+
 	private ProfileSetupModel profileModel = new();
 	private string selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
 	private string SelectedHex => MusicRUs.Services.ProfileColorService.Normalize(selectedColor);
@@ -182,8 +361,8 @@
 	private void ResetColor() => selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
 	private void PickColor(ChangeEventArgs args) => selectedColor = MusicRUs.Services.ProfileColorService.Normalize(args.Value?.ToString());
 	private string GradientPreviewStyle =>
-		$"--profile-start: {profileModel.BackgroundStartColor}; " +
-		$"--profile-end: {profileModel.BackgroundEndColor};";
+		$"--profile-start: {profileModel.PrimaryColor}; " +
+		$"--profile-end: {profileModel.AccentColor};";
 	protected override async Task OnParametersSetAsync()
 	{
 		var initialized = await AuthSession.InitializeAsync();
@@ -209,6 +388,9 @@
 		var profile = await AuthSession.GetForumProfileAsync(resolvedUserId);
 		profileModel = ProfileSetupModel.FromProfile(profile, AuthSession.CurrentUser, resolvedUserId);
 		selectedColor = await ProfileColors.GetAsync(resolvedUserId);
+		draftFavoriteGenre = profileModel.FavoriteGenre;
+		genreSearch = draftFavoriteGenre;
+		genres = await AuthSession.GetGenresAsync();
 		isReady = true;
 	}
 
@@ -223,6 +405,7 @@
 		isSaving = true;
 		formMessage = string.Empty;
 
+		profileModel.FavoriteGenre = draftFavoriteGenre.Trim();
 		var saved = await AuthSession.SaveForumProfileAsync(profileModel.ToForumProfile());
 		if (saved) await ProfileColors.SaveAsync(profileModel.UserId, SelectedHex);
 		isSaving = false;
@@ -235,7 +418,7 @@
 		
 		ToastService.Show("Profile saved");
 
-		Navigation.NavigateTo($"/{Uri.EscapeDataString(AuthSession.CurrentUser.Username)}");
+		Navigation.NavigateTo($"/profile/{AuthSession.CurrentUser.UserId}");
 	}
 
 	private void SkipSetup()
@@ -246,7 +429,7 @@
 			return;
 		}
 
-		Navigation.NavigateTo($"/{Uri.EscapeDataString(AuthSession.CurrentUser.Username)}");
+		Navigation.NavigateTo($"/profile/{AuthSession.CurrentUser.UserId}");
 	}
 
 	private static string GetProfileSetupUrl(int userId)
@@ -254,6 +437,197 @@
 		return userId > 0
 			? $"/profile/setup/{userId}"
 			: "/profile/setup";
+	}
+
+	private void SelectGenre(string genre)
+	{
+		genreSearch = genre;
+		if (!profileModel.Tags.Contains(genre, StringComparer.OrdinalIgnoreCase))
+		{
+			profileModel.Tags.Add(genre);
+		}
+	}
+
+	private void SetFavoriteGenre()
+	{
+		if (string.IsNullOrWhiteSpace(genreSearch))
+		{
+			return;
+		}
+
+		draftFavoriteGenre = genreSearch.Trim();
+		if (!profileModel.Tags.Contains(draftFavoriteGenre, StringComparer.OrdinalIgnoreCase))
+		{
+			profileModel.Tags.Add(draftFavoriteGenre);
+		}
+	}
+
+	private void RemoveGenreTag(string tag)
+	{
+		profileModel.Tags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
+	}
+
+	private async Task OnArtistSearchInputAsync(ChangeEventArgs args)
+	{
+		artistSearch = args.Value?.ToString() ?? string.Empty;
+		artistResult = null;
+		artistResults = [];
+		await DebounceArtistSearchAsync();
+	}
+
+	private async Task DebounceArtistSearchAsync()
+	{
+		CancelArtistSearchDebounce();
+
+		if (artistSearch.Trim().Length < 2)
+		{
+			isSearchingArtists = false;
+			return;
+		}
+
+		var debounce = new CancellationTokenSource();
+		artistSearchDebounce = debounce;
+		isSearchingArtists = true;
+		formMessage = string.Empty;
+		await InvokeAsync(StateHasChanged);
+
+		try
+		{
+			await Task.Delay(TimeSpan.FromMilliseconds(400), debounce.Token);
+			var results = await AuthSession.SearchArtistsAsync(artistSearch, debounce.Token);
+			if (!debounce.IsCancellationRequested && ReferenceEquals(artistSearchDebounce, debounce))
+			{
+				artistResults = results;
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			return;
+		}
+		finally
+		{
+			if (ReferenceEquals(artistSearchDebounce, debounce))
+			{
+				artistSearchDebounce = null;
+				isSearchingArtists = false;
+				await InvokeAsync(StateHasChanged);
+			}
+			debounce.Dispose();
+		}
+	}
+
+	private void SelectArtistResult(MusicArtist artist)
+	{
+		CancelArtistSearchDebounce();
+		isSearchingArtists = false;
+		artistResult = artist;
+		artistSearch = artist.Name;
+		artistResults = [];
+		formMessage = string.Empty;
+	}
+
+	private void AddFavoriteArtist()
+	{
+		if (artistResult is null || profileModel.FavoriteArtists.Any(artist => artist.Id == artistResult.Id))
+		{
+			return;
+		}
+
+		profileModel.FavoriteArtists.Add(artistResult);
+	}
+
+	private void RemoveFavoriteArtist(int artistId)
+	{
+		profileModel.FavoriteArtists.RemoveAll(artist => artist.Id == artistId);
+	}
+
+	private async Task OnAlbumSearchInputAsync(ChangeEventArgs args)
+	{
+		albumSearch = args.Value?.ToString() ?? string.Empty;
+		albumResult = null;
+		albumResults = [];
+		await DebounceAlbumSearchAsync();
+	}
+
+	private async Task DebounceAlbumSearchAsync()
+	{
+		CancelAlbumSearchDebounce();
+
+		if (albumSearch.Trim().Length < 2)
+		{
+			isSearchingAlbums = false;
+			return;
+		}
+
+		var debounce = new CancellationTokenSource();
+		albumSearchDebounce = debounce;
+		isSearchingAlbums = true;
+		formMessage = string.Empty;
+		await InvokeAsync(StateHasChanged);
+
+		try
+		{
+			await Task.Delay(TimeSpan.FromMilliseconds(400), debounce.Token);
+			var results = await AuthSession.SearchAlbumsAsync(albumSearch, debounce.Token);
+			if (!debounce.IsCancellationRequested && ReferenceEquals(albumSearchDebounce, debounce))
+			{
+				albumResults = results;
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			return;
+		}
+		finally
+		{
+			if (ReferenceEquals(albumSearchDebounce, debounce))
+			{
+				albumSearchDebounce = null;
+				isSearchingAlbums = false;
+				await InvokeAsync(StateHasChanged);
+			}
+			debounce.Dispose();
+		}
+	}
+
+	private void SelectAlbumResult(MusicAlbum album)
+	{
+		CancelAlbumSearchDebounce();
+		isSearchingAlbums = false;
+		albumResult = album;
+		albumSearch = album.Title;
+		albumResults = [];
+		formMessage = string.Empty;
+	}
+
+	private void AddFavoriteAlbum()
+	{
+		if (albumResult is null || profileModel.FavoriteAlbums.Any(album => album.Id == albumResult.Id))
+		{
+			return;
+		}
+
+		profileModel.FavoriteAlbums.Add(albumResult);
+	}
+
+	private void RemoveFavoriteAlbum(int albumId)
+	{
+		profileModel.FavoriteAlbums.RemoveAll(album => album.Id == albumId);
+	}
+
+	private void AddCollectionAlbum()
+	{
+		if (albumResult is null || profileModel.MusicCollection.Any(album => album.Id == albumResult.Id))
+		{
+			return;
+		}
+
+		profileModel.MusicCollection.Add(albumResult);
+	}
+
+	private void RemoveCollectionAlbum(int albumId)
+	{
+		profileModel.MusicCollection.RemoveAll(album => album.Id == albumId);
 	}
 
 	private sealed class ProfileSetupModel
@@ -273,17 +647,24 @@
 		public string Location { get; set; } = string.Empty;
 
 
+		public string FavoriteGenre { get; set; } = string.Empty;
+
+		public List<string> Tags { get; set; } = [];
+		public List<MusicArtist> FavoriteArtists { get; set; } = [];
+		public List<MusicAlbum> FavoriteAlbums { get; set; } = [];
+		public List<MusicAlbum> MusicCollection { get; set; } = [];
+
 		public string WebsiteUrl { get; set; } = string.Empty;
 
 		public bool IsPublic { get; set; } = true;
 		
 		[Required]
 		[RegularExpression("^#[0-9a-fA-F]{6}$")]
-		public string BackgroundStartColor { get; set; } = "#2E0B05";
+		public string PrimaryColor { get; set; } = "#2E0B05";
 
 		[Required]
 		[RegularExpression("^#[0-9a-fA-F]{6}$")]
-		public string BackgroundEndColor { get; set; } = "#B82A14";
+		public string AccentColor { get; set; } = "#B82A14";
 
 		public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
@@ -299,10 +680,15 @@
 				Bio = profile?.Bio ?? string.Empty,
 				AvatarUrl = string.IsNullOrWhiteSpace(profile?.AvatarUrl) ? user.AvatarUrl : profile.AvatarUrl,
 				Location = profile?.Location ?? string.Empty,
+				FavoriteGenre = profile?.FavoriteGenre ?? string.Empty,
+				Tags = profile?.Tags?.ToList() ?? [],
+				FavoriteArtists = profile?.FavoriteArtists?.ToList() ?? [],
+				FavoriteAlbums = profile?.FavoriteAlbums?.ToList() ?? [],
+				MusicCollection = profile?.MusicCollection?.ToList() ?? [],
 				WebsiteUrl = profile?.WebsiteUrl ?? string.Empty,
 				IsPublic = profile?.IsPublic ?? true,
-				BackgroundStartColor = profile?.BackgroundStartColor ?? "#2E0B05",
-				BackgroundEndColor = profile?.BackgroundEndColor ?? "#B82A14",
+				PrimaryColor = profile?.PrimaryColor ?? "#2E0B05",
+				AccentColor = profile?.AccentColor ?? "#B82A14",
 				CreatedAt = profile?.CreatedAt ?? DateTimeOffset.UtcNow,
 				UpdatedAt = profile?.UpdatedAt ?? DateTimeOffset.UtcNow
 			};
@@ -318,14 +704,62 @@
 				Bio = Bio.Trim(),
 				AvatarUrl = AvatarUrl.Trim(),
 				Location = Location.Trim(),
+				FavoriteGenre = FavoriteGenre.Trim(),
+				Tags = Tags.Where(tag => !string.IsNullOrWhiteSpace(tag)).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+				FavoriteArtists = FavoriteArtists.ToList(),
+				FavoriteAlbums = FavoriteAlbums.ToList(),
+				MusicCollection = MusicCollection.ToList(),
 				WebsiteUrl = WebsiteUrl.Trim(),
 				IsPublic = IsPublic,
-				BackgroundStartColor = BackgroundStartColor,
-				BackgroundEndColor = BackgroundEndColor,
+				PrimaryColor = PrimaryColor,
+				AccentColor = AccentColor,
 				CreatedAt = CreatedAt,
 				UpdatedAt = DateTimeOffset.UtcNow
 			};
 		}
 	}
 
+	public void Dispose()
+	{
+		CancelArtistSearchDebounce();
+		CancelAlbumSearchDebounce();
+	}
+
+	private void CancelArtistSearchDebounce()
+	{
+		var debounce = artistSearchDebounce;
+		artistSearchDebounce = null;
+		if (debounce is null)
+		{
+			return;
+		}
+
+		try
+		{
+			debounce.Cancel();
+		}
+		catch (ObjectDisposedException)
+		{
+		}
+
+	}
+
+	private void CancelAlbumSearchDebounce()
+	{
+		var debounce = albumSearchDebounce;
+		albumSearchDebounce = null;
+		if (debounce is null)
+		{
+			return;
+		}
+
+		try
+		{
+			debounce.Cancel();
+		}
+		catch (ObjectDisposedException)
+		{
+		}
+
+	}
 }

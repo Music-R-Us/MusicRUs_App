@@ -79,7 +79,14 @@
 	public int UserId { get; set; }
 
 	private ForumProfile? CurrentProfile;
-	private UserSession? ViewedUser;
+
+	public override Task SetParametersAsync(ParameterView parameters)
+	{
+		// The router can reuse this component when switching between its routes.
+		Username = string.Empty;
+		UserId = 0;
+		return base.SetParametersAsync(parameters);
+	}
 
 	private static string SafeColor(string? value, string fallback)
 	{
@@ -89,8 +96,8 @@
 	}
 
 	private string ProfileBackgroundStyle =>
-		$"--profile-start: {SafeColor(CurrentProfile?.BackgroundStartColor, "#2E0B05")}; " +
-		$"--profile-end: {SafeColor(CurrentProfile?.BackgroundEndColor, "#B82A14")};";
+		$"--profile-start: {SafeColor(CurrentProfile?.PrimaryColor, "#2E0B05")}; " +
+		$"--profile-end: {SafeColor(CurrentProfile?.AccentColor, "#B82A14")};";
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -138,9 +145,9 @@
 
 	private string GetProfileUsernameFallback()
 	{
-		if (!string.IsNullOrWhiteSpace(ViewedUser?.Username))
+		if (!string.IsNullOrWhiteSpace(CurrentProfile?.Username))
 		{
-			return ViewedUser.Username;
+			return CurrentProfile.Username;
 		}
 
 		if (!string.IsNullOrWhiteSpace(Username))

@@ -26,11 +26,23 @@ public sealed class ForumProfileService
 
 		if (apiClient.CanUseBackend)
 		{
-			var profileFromApi = await apiClient.GetAsync<ForumProfile>(
-				$"api/profiles/{Uri.EscapeDataString(normalizedUsername)}", currentUser?.AccessToken, cancellationToken);
-			if (profileFromApi is not null)
+			var profiles = await apiClient.GetAsync<List<ForumProfile>>(
+				$"api/ForumProfile/searchForumProfiles?keyword={Uri.EscapeDataString(normalizedUsername)}",
+				currentUser?.AccessToken, cancellationToken);
+
+			// Search can return partial matches, and display names are not unique.
+			// Resolve only an unambiguous exact match to avoid showing another user.
+			var matches = profiles?
+				.Where(profile => profile.UserId > 0
+					&& (string.Equals(profile.Username?.Trim(), normalizedUsername, StringComparison.OrdinalIgnoreCase)
+						|| string.Equals(profile.DisplayName?.Trim(), normalizedUsername, StringComparison.OrdinalIgnoreCase)))
+				.Select(profile => profile.UserId)
+				.Distinct()
+				.Take(2)
+				.ToArray();
+			if (matches is { Length: 1 })
 			{
-				return profileFromApi;
+				return await GetForumProfileAsync(matches[0], currentUser, cancellationToken);
 			}
 		}
 
@@ -121,10 +133,12 @@ public sealed class ForumProfileService
 			Bio = EmptyToNull(profile.Bio),
 			AvatarUrl = EmptyToNull(profile.AvatarUrl),
 			Location = EmptyToNull(profile.Location),
+			FavoriteGenre = profile.FavoriteGenre.Trim(),
+			Tags = profile.Tags.ToList(),
 			WebsiteUrl = EmptyToNull(profile.WebsiteUrl),
 			IsPublic = profile.IsPublic,
-			BackgroundStartColor = EmptyToNull(profile.BackgroundStartColor),
-			BackgroundEndColor = EmptyToNull(profile.BackgroundEndColor),
+			PrimaryColor = EmptyToNull(profile.PrimaryColor),
+			AccentColor = EmptyToNull(profile.AccentColor),
 			UpdatedAt = profile.UpdatedAt
 		};
 

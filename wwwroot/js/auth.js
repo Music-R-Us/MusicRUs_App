@@ -100,7 +100,7 @@ window.addEventListener("pageshow", (event) => {
     }
 });
 
-window.initGoogleSignIn = (dotnetRef, buttonText = "continue_with") => {
+window.initGoogleSignIn = (dotnetRef, buttonText = "Continue_with") => {
     const button = document.getElementById("google-btn");
     if (!button || !dotnetRef) {
         return;
