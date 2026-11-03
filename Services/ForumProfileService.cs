@@ -94,8 +94,13 @@ public sealed class ForumProfileService
 			profile.CreatedAt = profile.UpdatedAt;
 		}
 
-		var existingProfile = await apiClient.GetAsync<ForumProfile>($"api/ForumProfile/user/{profile.UserId}", currentUser?.AccessToken, cancellationToken);
-		var backendProfile = existingProfile;
+		var existing = await apiClient.GetWithStatusAsync<ForumProfile>($"api/ForumProfile/user/{profile.UserId}", currentUser?.AccessToken, cancellationToken);
+		var backendProfile = existing.Value;
+		// Only a confirmed missing profile should trigger creation.
+		if (backendProfile is null && existing.StatusCode != System.Net.HttpStatusCode.NotFound)
+		{
+			return false;
+		}
 		if (backendProfile is not null)
 		{
 			profile.Id = backendProfile.Id;
@@ -103,16 +108,21 @@ public sealed class ForumProfileService
 			profile.CreatedAt = backendProfile.CreatedAt;
 		}
 
-		var savedProfile = await UpdateForumProfileAsync(profile, currentUser, cancellationToken);
-		if (savedProfile is null)
+		var saved = backendProfile is null
+			? await CreateForumProfileAsync(profile, currentUser, cancellationToken)
+			: await UpdateForumProfileAsync(profile, currentUser, cancellationToken);
+		if (!saved)
 		{
 			return false;
 		}
 
-		profile.Id = savedProfile.Id;
-		profile.UserId = savedProfile.UserId;
-		profile.CreatedAt = savedProfile.CreatedAt;
-		profile.UpdatedAt = savedProfile.UpdatedAt;
+		var savedProfile = await GetForumProfileAsync(profile.UserId, currentUser, cancellationToken);
+		if (savedProfile is not null)
+		{
+			profile.Id = savedProfile.Id;
+			profile.CreatedAt = savedProfile.CreatedAt;
+			profile.UpdatedAt = savedProfile.UpdatedAt;
+		}
 
 		return true;
 	}
@@ -125,7 +135,38 @@ public sealed class ForumProfileService
 		}
 	}
 
-	private async Task<ForumProfile?> UpdateForumProfileAsync(ForumProfile profile, UserSession? currentUser, CancellationToken cancellationToken)
+	private Task<bool> CreateForumProfileAsync(ForumProfile profile, UserSession? currentUser, CancellationToken cancellationToken)
+	{
+		var request = new
+		{
+			Id = 0,
+			profile.UserId,
+			DisplayName = profile.DisplayName.Trim(),
+			Bio = profile.Bio.Trim(),
+			AvatarUrl = profile.AvatarUrl.Trim(),
+			Location = profile.Location.Trim(),
+			WebsiteUrl = profile.WebsiteUrl.Trim(),
+			profile.PrimaryColor,
+			profile.AccentColor,
+			profile.IsPublic,
+			profile.CreatedAt,
+			profile.UpdatedAt,
+			FavoriteArtists = profile.FavoriteArtists.Where(artist => artist.Id > 0).DistinctBy(artist => artist.Id).ToList(),
+			FavoriteAlbums = profile.FavoriteAlbums.Where(album => album.Id > 0).DistinctBy(album => album.Id)
+				.Select(album => new
+				{
+					album.Id, album.SpotifyId, album.Title,
+					// The create contract uses the numeric album-type enum.
+					AlbumType = int.TryParse(album.AlbumType, out var albumType) ? albumType : 0,
+					album.ReleaseDate, TotalTracks = album.TotalTracks ?? 0, album.ImageUrl, album.SpotifyUrl
+				}).ToList(),
+			Genres = profile.Genres.Where(genre => genre.Id > 0).DistinctBy(genre => genre.Id).ToList()
+		};
+
+		return apiClient.PostAsync($"api/ForumProfile/CreateForumProfile/{profile.UserId}", request, currentUser?.AccessToken, cancellationToken);
+	}
+
+	private Task<bool> UpdateForumProfileAsync(ForumProfile profile, UserSession? currentUser, CancellationToken cancellationToken)
 	{
 		var request = new UpdateForumProfileRequest
 		{
@@ -133,8 +174,9 @@ public sealed class ForumProfileService
 			Bio = EmptyToNull(profile.Bio),
 			AvatarUrl = EmptyToNull(profile.AvatarUrl),
 			Location = EmptyToNull(profile.Location),
-			FavoriteGenre = profile.FavoriteGenre.Trim(),
-			Tags = profile.Tags.ToList(),
+			FavoriteArtistIds = profile.FavoriteArtists.Select(artist => artist.Id).Where(id => id > 0).Distinct().ToList(),
+			FavoriteAlbumIds = profile.FavoriteAlbums.Select(album => album.Id).Where(id => id > 0).Distinct().ToList(),
+			GenreIds = profile.Genres.Select(genre => genre.Id).Where(id => id > 0).Distinct().ToList(),
 			WebsiteUrl = EmptyToNull(profile.WebsiteUrl),
 			IsPublic = profile.IsPublic,
 			PrimaryColor = EmptyToNull(profile.PrimaryColor),
@@ -142,12 +184,7 @@ public sealed class ForumProfileService
 			UpdatedAt = profile.UpdatedAt
 		};
 
-		if (!await apiClient.PatchAsync($"api/ForumProfile/user/{profile.UserId}", request, currentUser?.AccessToken, cancellationToken))
-		{
-			return null;
-		}
-
-		return await apiClient.GetAsync<ForumProfile>($"api/ForumProfile/user/{profile.UserId}", currentUser?.AccessToken, cancellationToken);
+		return apiClient.PatchAsync($"api/ForumProfile/user/{profile.UserId}", request, currentUser?.AccessToken, cancellationToken);
 	}
 
 

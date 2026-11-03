@@ -140,6 +140,8 @@ public sealed class ForumProfile
 
 	public List<MusicAlbum> FavoriteAlbums { get; set; } = [];
 
+	public List<GenreOption> Genres { get; set; } = [];
+
 	public List<MusicAlbum> MusicCollection { get; set; } = [];
 
 	public int PostCount { get; set; }
@@ -166,6 +168,7 @@ public sealed class MusicAlbum
 
 	public string Title { get; set; } = string.Empty;
 
+	[System.Text.Json.Serialization.JsonConverter(typeof(AlbumTypeJsonConverter))]
 	public string AlbumType { get; set; } = string.Empty;
 
 	public string ReleaseDate { get; set; } = string.Empty;
@@ -185,6 +188,8 @@ public sealed class MusicAlbum
 }
 public sealed class GenreOption
 {
+	public int Id { get; set; }
+
 	public string Name { get; set; } = string.Empty;
 }
 public sealed class AlbumArtistInfo
@@ -270,8 +275,6 @@ public sealed class UpdateForumProfileRequest
 
 	public string? Location { get; set; }
 
-	public string? FavoriteGenre { get; set; }
-
 	public string? WebsiteUrl { get; set; }
 
 	public bool? IsPublic { get; set; }
@@ -280,7 +283,11 @@ public sealed class UpdateForumProfileRequest
 
 	public DateTimeOffset? UpdatedAt { get; set; }
 
-	public List<string>? Tags { get; set; }
+	public List<int> FavoriteArtistIds { get; set; } = [];
+
+	public List<int> FavoriteAlbumIds { get; set; } = [];
+
+	public List<int> GenreIds { get; set; } = [];
 }
 
 public sealed class BackendApiOptions

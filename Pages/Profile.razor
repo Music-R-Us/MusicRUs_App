@@ -67,6 +67,46 @@
 					</div>
 				</div>
 			</div>
+
+			<div class="grid gap-6 sm:grid-cols-2">
+				<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+					<h2 class="text-xl font-semibold text-porcelain-50">Favorite artists</h2>
+					@if (CurrentProfile.FavoriteArtists.Count == 0)
+					{
+						<p class="text-sm text-porcelain-50/70">No favorite artists yet.</p>
+					}
+					@foreach (var artist in CurrentProfile.FavoriteArtists)
+					{
+						<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
+							@if (!string.IsNullOrWhiteSpace(artist.ImageUrl))
+							{
+								<img src="@artist.ImageUrl" alt="" loading="lazy" class="h-14 w-14 rounded-full object-cover" />
+							}
+							<p class="font-semibold text-porcelain-50">@artist.Name</p>
+						</div>
+					}
+				</div>
+				<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+					<h2 class="text-xl font-semibold text-porcelain-50">Favorite albums</h2>
+					@if (CurrentProfile.FavoriteAlbums.Count == 0)
+					{
+						<p class="text-sm text-porcelain-50/70">No favorite albums yet.</p>
+					}
+					@foreach (var album in CurrentProfile.FavoriteAlbums)
+					{
+						<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
+							@if (!string.IsNullOrWhiteSpace(album.ImageUrl))
+							{
+								<img src="@album.ImageUrl" alt="" loading="lazy" class="h-14 w-14 rounded-lg object-cover" />
+							}
+							<div>
+								<p class="font-semibold text-porcelain-50">@album.Title</p>
+								<p class="text-sm text-porcelain-50/70">@album.ArtistName</p>
+							</div>
+						</div>
+					}
+				</div>
+			</div>
 		}
 	</div>
 </section>

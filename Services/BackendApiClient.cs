@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Options;
 using MusicRUs.Models;
@@ -20,6 +21,12 @@ public sealed class BackendApiClient
 
 	public async Task<T?> GetAsync<T>(string relativeUrl, string? accessToken = null, CancellationToken cancellationToken = default)
 	{
+		var result = await GetWithStatusAsync<T>(relativeUrl, accessToken, cancellationToken);
+		return result.Value;
+	}
+
+	public async Task<(T? Value, HttpStatusCode? StatusCode)> GetWithStatusAsync<T>(string relativeUrl, string? accessToken = null, CancellationToken cancellationToken = default)
+	{
 		try
 		{
 			using var request = new HttpRequestMessage(HttpMethod.Get, relativeUrl);
@@ -28,14 +35,14 @@ public sealed class BackendApiClient
 			using var response = await httpClient.SendAsync(request, cancellationToken);
 			if (!response.IsSuccessStatusCode)
 			{
-				return default;
+				return (default, response.StatusCode);
 			}
 
-			return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+			return (await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken), response.StatusCode);
 		}
 		catch
 		{
-			return default;
+			return (default, null);
 		}
 	}
 

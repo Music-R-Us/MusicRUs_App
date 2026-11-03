@@ -390,12 +390,14 @@
 		selectedColor = await ProfileColors.GetAsync(resolvedUserId);
 		draftFavoriteGenre = profileModel.FavoriteGenre;
 		genreSearch = draftFavoriteGenre;
-		genres = await AuthSession.GetGenresAsync();
+		genres = (await AuthSession.GetGenresAsync()).Concat(profile?.Genres ?? [])
+			.Where(genre => genre.Id > 0).DistinctBy(genre => genre.Id).ToList();
 		isReady = true;
 	}
 
 	private async Task HandleSaveAsync()
 	{
+		if (isSaving) return;
 		if (AuthSession.CurrentUser is null)
 		{
 			Navigation.NavigateTo("/loginpick");
@@ -406,7 +408,9 @@
 		formMessage = string.Empty;
 
 		profileModel.FavoriteGenre = draftFavoriteGenre.Trim();
-		var saved = await AuthSession.SaveForumProfileAsync(profileModel.ToForumProfile());
+		var profile = profileModel.ToForumProfile();
+		profile.Genres = genres.Where(genre => profileModel.Tags.Contains(genre.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+		var saved = await AuthSession.SaveForumProfileAsync(profile);
 		if (saved) await ProfileColors.SaveAsync(profileModel.UserId, SelectedHex);
 		isSaving = false;
 
@@ -455,6 +459,12 @@
 			return;
 		}
 
+		if (!genres.Any(genre => string.Equals(genre.Name, genreSearch.Trim(), StringComparison.OrdinalIgnoreCase)))
+		{
+			formMessage = "Choose a genre from the suggestions so it can be saved.";
+			return;
+		}
+
 		draftFavoriteGenre = genreSearch.Trim();
 		if (!profileModel.Tags.Contains(draftFavoriteGenre, StringComparer.OrdinalIgnoreCase))
 		{
@@ -465,6 +475,7 @@
 	private void RemoveGenreTag(string tag)
 	{
 		profileModel.Tags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
+		if (string.Equals(draftFavoriteGenre, tag, StringComparison.OrdinalIgnoreCase)) draftFavoriteGenre = string.Empty;
 	}
 
 	private async Task OnArtistSearchInputAsync(ChangeEventArgs args)
@@ -528,7 +539,7 @@
 
 	private void AddFavoriteArtist()
 	{
-		if (artistResult is null || profileModel.FavoriteArtists.Any(artist => artist.Id == artistResult.Id))
+		if (artistResult is null || artistResult.Id <= 0 || profileModel.FavoriteArtists.Any(artist => artist.Id == artistResult.Id))
 		{
 			return;
 		}
@@ -602,7 +613,7 @@
 
 	private void AddFavoriteAlbum()
 	{
-		if (albumResult is null || profileModel.FavoriteAlbums.Any(album => album.Id == albumResult.Id))
+		if (albumResult is null || albumResult.Id <= 0 || profileModel.FavoriteAlbums.Any(album => album.Id == albumResult.Id))
 		{
 			return;
 		}
@@ -681,7 +692,9 @@
 				AvatarUrl = string.IsNullOrWhiteSpace(profile?.AvatarUrl) ? user.AvatarUrl : profile.AvatarUrl,
 				Location = profile?.Location ?? string.Empty,
 				FavoriteGenre = profile?.FavoriteGenre ?? string.Empty,
-				Tags = profile?.Tags?.ToList() ?? [],
+				Tags = profile?.Genres is { Count: > 0 }
+					? profile.Genres.Select(genre => genre.Name).ToList()
+					: profile?.Tags?.ToList() ?? [],
 				FavoriteArtists = profile?.FavoriteArtists?.ToList() ?? [],
 				FavoriteAlbums = profile?.FavoriteAlbums?.ToList() ?? [],
 				MusicCollection = profile?.MusicCollection?.ToList() ?? [],
