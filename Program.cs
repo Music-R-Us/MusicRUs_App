@@ -14,6 +14,9 @@ builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<ForumProfileService>();
 builder.Services.AddScoped<ProfileColorService>();
 builder.Services.AddScoped<ToastService>();
+builder.Services.AddScoped<UserLookupService>();
+builder.Services.AddScoped<PostFeedService>();
+builder.Services.AddScoped<MusicCatalogService>();
 
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");

@@ -58,8 +58,8 @@
 				</div>
 				<div class="grid gap-2 text-sm sm:grid-cols-2">
 					<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
-						<p class="text-porcelain-50/60">Location</p>
-						<p class="text-xl font-semibold text-porcelain-50">@(string.IsNullOrWhiteSpace(CurrentProfile.Location) ? "Not set" : CurrentProfile.Location)</p>
+						<p class="text-porcelain-50/60">Website</p>
+						<a href="@CurrentProfile.WebsiteUrl" target="_blank" rel="noopener noreferrer" class="text-xl font-semibold text-porcelain-50">@(string.IsNullOrWhiteSpace(CurrentProfile.WebsiteUrl) ? "Not set" : CurrentProfile.WebsiteUrl)</a>
 					</div>
 					<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
 						<p class="text-porcelain-50/60">Visibility</p>

@@ -1,0 +1,741 @@
+@page "/posts"
+@layout MainLayout
+@implements IDisposable
+
+@inject MusicRUs.Services.PostFeedService PostFeed
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject MusicRUs.Services.ToastService ToastService
+@inject NavigationManager Navigation
+
+<PageTitle>Posts</PageTitle>
+
+<section class="grid gap-6">
+	<div class="flex flex-col gap-4 rounded-4xl border border-granite-800/80 gradient-surface p-8 backdrop-blur lg:flex-row lg:items-end lg:justify-between">
+		<div class="grid gap-2">
+			<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Recent posts</p>
+			<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">Posts</h1>
+			<p class="max-w-2xl text-base leading-7 text-porcelain-50/80">
+				A recent feed that leans into your favorite tags while still surfacing the whole conversation.
+			</p>
+		</div>
+        @if(AuthSession.CurrentUser is not null)
+        {
+        <button class="inline-flex items-center justify-center rounded-full bg-pine-teal-400 px-5 py-3 text-sm font-semibold text-coffee-bean-950 transition hover:bg-pine-teal-300"
+			type="button"
+			@onclick="OpenComposer">
+			+ New Post
+		</button>
+        }
+
+	</div>
+
+	<div class="grid gap-4 rounded-3xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+		<div class="grid gap-4 lg:grid-cols-2">
+			<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
+				<span>Search posts</span>
+				<input value="@postSearch" @oninput="OnPostSearchInput" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+			</label>
+			<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
+				<span>Search tags</span>
+				<input value="@feedTagSearch" @oninput="OnFeedTagSearchInput" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+			</label>
+		</div>
+
+		@if (selectedFeedTags.Count > 0)
+		{
+			<div class="flex flex-wrap gap-2">
+				@foreach (var tag in selectedFeedTags)
+				{
+					<button type="button" @onclick="() => RemoveFeedTag(tag)" class="rounded-full border border-pine-teal-400/30 bg-pine-teal-400/10 px-3 py-1 text-sm text-pine-teal-100 transition hover:border-pine-teal-300">
+						#@tag x
+					</button>
+				}
+			</div>
+		}
+
+		@if (FilteredFeedTagSuggestions.Count > 0)
+		{
+			<div class="flex flex-wrap gap-2">
+				@foreach (var tag in FilteredFeedTagSuggestions)
+				{
+					<button type="button" @onclick="() => AddFeedTag(tag)" class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1 text-sm text-porcelain-50 transition hover:border-pine-teal-300 hover:text-pine-teal-200">
+						#@tag
+					</button>
+				}
+			</div>
+		}
+	</div>
+
+	<div class="grid gap-4">
+		@if (FeedPosts.Count == 0)
+		{
+			<div class="rounded-3xl border border-granite-800/70 bg-coffee-bean-950/70 p-6 text-porcelain-50/75">
+				<p class="text-lg font-semibold text-porcelain-50">No posts yet</p>
+				<p class="mt-2 text-sm leading-6">Looks like it's just us here.</p>
+			</div>
+		}
+		else
+		{
+			@if (FilteredFeedPosts.Count == 0)
+			{
+				<div class="rounded-3xl border border-granite-800/70 bg-coffee-bean-950/70 p-6 text-porcelain-50/75">
+					<p class="text-lg font-semibold text-porcelain-50">No matching posts</p>
+					<p class="mt-2 text-sm leading-6">Try another post search or tag.</p>
+				</div>
+			}
+			@foreach (var post in FilteredFeedPosts)
+			{
+				<article class="@GetPostCardClass(post)">
+					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+						<div class="grid gap-3">
+							<div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-pine-teal-300/80">
+								@if (IsHighlightedOwnPost(post))
+								{
+									<span class="rounded-full border border-pine-teal-400/30 bg-pine-teal-400/10 px-2 py-1 text-pine-teal-300">Your recent post</span>
+								}
+								<a href="@GetAuthorProfileUrl(post)" class="text-pine-teal-200 underline-offset-4 transition hover:text-pine-teal-100 hover:underline">
+									@GetAuthorDisplayName(post)
+								</a>
+							</div>
+
+							<a href="@($"/posts/{post.RouteId}")" class="text-2xl font-semibold tracking-tight text-porcelain-50 transition hover:text-pine-teal-200">@post.Title</a>
+							<p class="max-w-4xl text-sm leading-6 text-porcelain-50/75 sm:text-base">@post.Body</p>
+						</div>
+
+						@if (HasMusicSelection(post))
+						{
+							<div class="grid gap-2 text-sm text-porcelain-50/70 lg:min-w-64 lg:justify-items-end">
+								<p class="font-medium text-porcelain-50">@post.Artist</p>
+								<p>@post.Album</p>
+							</div>
+						}
+					</div>
+
+					<div class="mt-4 flex flex-wrap items-center gap-2 text-sm text-porcelain-50/70">
+						@foreach (var tag in post.Tags)
+						{
+							<span class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1">#@tag</span>
+						}
+						@if (IsOwnPost(post))
+						{
+							<button type="button"
+								@onclick="() => DeletePostAsync(post)"
+								class="rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-100 transition hover:border-red-300 hover:bg-red-400/20">
+								Delete
+							</button>
+						}
+						<span class="ml-auto text-xs uppercase tracking-[0.24em] text-granite-300">@(post.CommentCount > 0 ? post.CommentCount : post.Comments.Count) comments</span>
+					</div>
+				</article>
+			}
+		}
+	</div>
+</section>
+
+@if (IsComposerOpen)
+{
+	<div class="fixed inset-0 z-40 flex items-center justify-center bg-coffee-bean-950/80 px-4 py-8 backdrop-blur-sm">
+		<div class="max-h-[calc(100vh-4rem)] w-full max-w-4xl overflow-y-auto rounded-4xl border border-granite-800/80 bg-coffee-bean-950 p-6 shadow-2xl shadow-black/30 lg:p-8">
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Compose</p>
+					<h2 class="mt-2 text-3xl font-semibold tracking-tight text-porcelain-50">New Post</h2>
+				</div>
+				<button class="rounded-full border border-granite-700 px-3 py-1 text-sm text-porcelain-50/70 transition hover:bg-granite-900"
+					type="button"
+					@onclick="CloseComposer">
+					Close
+				</button>
+			</div>
+
+			<EditForm Model="Draft" OnValidSubmit="CreatePostAsync" class="mt-6 grid gap-5">
+				<DataAnnotationsValidator />
+				<div class="grid gap-5 lg:grid-cols-2">
+					<div class="grid gap-4">
+						<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
+							<span>Title</span>
+							<InputText @bind-Value="Draft.Title" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+						</label>
+
+						<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
+							<span>What do you want to write?</span>
+							<InputTextArea @bind-Value="Draft.Body" rows="8" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+						</label>
+
+						<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
+							<span>Search tags</span>
+							<input value="@tagSearch" @oninput="OnTagsInput" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+						</label>
+						@if (selectedTags.Count > 0)
+						{
+							<div class="flex flex-wrap gap-2">
+								@foreach (var tag in selectedTags)
+								{
+									<button type="button" @onclick="() => RemoveTag(tag)" class="rounded-full border border-pine-teal-400/30 bg-pine-teal-400/10 px-3 py-1 text-sm text-pine-teal-100 transition hover:border-pine-teal-300">
+										#@tag x
+									</button>
+								}
+							</div>
+						}
+						@if (FilteredTagSuggestions.Count > 0)
+						{
+							<div class="flex flex-wrap gap-2">
+								@foreach (var tag in FilteredTagSuggestions)
+								{
+									<button type="button" @onclick="() => AddTag(tag)" class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1 text-sm text-porcelain-50 transition hover:border-pine-teal-300 hover:text-pine-teal-200">
+										#@tag
+									</button>
+								}
+							</div>
+						}
+					</div>
+
+					<div class="grid gap-4">
+						<div class="grid gap-3 rounded-3xl border border-granite-800 bg-coffee-bean-900/40 p-4 text-sm text-porcelain-50/80">
+							<span class="font-medium text-porcelain-50">Music selection</span>
+							<InputRadioGroup @bind-Value="Draft.RequiresMusicSelection" class="grid gap-3">
+								<label class="flex items-center gap-3">
+									<InputRadio Value="true" />
+									<span>Require artist and album</span>
+								</label>
+								<label class="flex items-center gap-3">
+									<InputRadio Value="false" />
+									<span>Post without music selection</span>
+								</label>
+							</InputRadioGroup>
+						</div>
+
+						@if (Draft.RequiresMusicSelection)
+						{
+							<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
+								<span>Artist</span>
+								<input value="@Draft.Selection.Artist" @oninput="OnArtistInputAsync" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+							</label>
+							@if (isSearchingArtists)
+							{
+								<p class="text-sm text-porcelain-50/60">Searching...</p>
+							}
+							@if (artistResults.Count > 0)
+							{
+								<div class="grid gap-2 rounded-2xl border border-granite-800 bg-coffee-bean-950/70 p-3">
+									@foreach (var artist in artistResults)
+									{
+										<button type="button" @onclick="() => SelectArtistAsync(artist)" class="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-porcelain-50 transition hover:bg-granite-900/80">
+											@if (!string.IsNullOrWhiteSpace(artist.ImageUrl))
+											{
+												<img src="@artist.ImageUrl" alt="@artist.Name" class="h-10 w-10 rounded-lg object-cover" />
+											}
+											<span class="font-semibold">@artist.Name</span>
+										</button>
+									}
+								</div>
+							}
+
+							<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
+								<span>Album</span>
+								<input value="@Draft.Selection.Album" @oninput="OnAlbumInputAsync" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+							</label>
+							@if (Draft.Selection.ArtistId <= 0 && !string.IsNullOrWhiteSpace(Draft.Selection.Album))
+							{
+								<p class="text-sm text-porcelain-50/60">Select an artist first to search their albums.</p>
+							}
+							@if (isSearchingAlbums)
+							{
+								<p class="text-sm text-porcelain-50/60">Searching...</p>
+							}
+							@if (albumResults.Count > 0)
+							{
+								<div class="grid gap-2 rounded-2xl border border-granite-800 bg-coffee-bean-950/70 p-3">
+									@foreach (var album in albumResults)
+									{
+										<button type="button" @onclick="() => SelectAlbumAsync(album)" class="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-porcelain-50 transition hover:bg-granite-900/80">
+											@if (!string.IsNullOrWhiteSpace(album.ImageUrl))
+											{
+												<img src="@album.ImageUrl" alt="@album.Title" class="h-10 w-10 rounded-lg object-cover" />
+											}
+											<span>
+												<span class="block font-semibold">@album.Title</span>
+												@if (!string.IsNullOrWhiteSpace(album.ReleaseDate))
+												{
+													<span class="text-xs text-porcelain-50/60">@album.ReleaseDate</span>
+												}
+											</span>
+										</button>
+									}
+								</div>
+							}
+
+						}
+					</div>
+				</div>
+
+				@if (!string.IsNullOrWhiteSpace(ComposerError))
+				{
+					<p class="rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-100">@ComposerError</p>
+				}
+
+				<div class="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-granite-800 bg-coffee-bean-950 pt-5 sm:flex-row sm:items-center sm:justify-end">
+					<button class="rounded-full border border-granite-700 px-5 py-3 text-sm font-medium text-porcelain-50/80 transition hover:bg-granite-900" type="button" @onclick="CloseComposer">Cancel</button>
+					<button class="rounded-full border-2 border-porcelain-50/80 bg-fiery-terracotta-500 px-6 py-3 text-sm font-bold text-porcelain-50 shadow-lg shadow-black/30 transition hover:border-porcelain-50 hover:bg-fiery-terracotta-400" type="submit">Publish Post</button>
+				</div>
+			</EditForm>
+		</div>
+	</div>
+}
+
+@code {
+	private readonly MusicRUs.Models.PostDraft Draft = new();
+	private bool IsComposerOpen;
+	private IReadOnlyList<MusicRUs.Models.PostItem> FeedPosts = [];
+	private List<MusicRUs.Models.MusicArtist> artistResults = [];
+	private List<MusicRUs.Models.MusicAlbum> albumResults = [];
+	private List<MusicRUs.Models.GenreOption> genreOptions = [];
+	private List<string> selectedTags = [];
+	private List<string> selectedFeedTags = [];
+	private Dictionary<int, MusicRUs.Models.ForumProfile> AuthorProfiles = [];
+	private Dictionary<int, MusicRUs.Models.UserSession> AuthorUsers = [];
+	private CancellationTokenSource? artistSearchDebounce;
+	private CancellationTokenSource? albumSearchDebounce;
+	private bool isSearchingArtists;
+	private bool isSearchingAlbums;
+	private string ComposerError = string.Empty;
+	private string tagSearch = string.Empty;
+	private string postSearch = string.Empty;
+	private string feedTagSearch = string.Empty;
+
+	private IReadOnlyList<string> FilteredTagSuggestions => FilterSuggestions(GetGenreSuggestions(), tagSearch, selectedTags);
+	private IReadOnlyList<string> FilteredFeedTagSuggestions => FilterSuggestions(GetGenreSuggestions(), feedTagSearch, selectedFeedTags);
+	private IReadOnlyList<MusicRUs.Models.PostItem> FilteredFeedPosts => FeedPosts
+		.Where(MatchesPostSearch)
+		.Where(MatchesFeedTags)
+		.ToList();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await AuthSession.InitializeAsync();
+		genreOptions = await AuthSession.GetGenresAsync();
+		await LoadFeedAsync();
+	}
+
+	private async Task LoadFeedAsync()
+	{
+		FeedPosts = await PostFeed.GetRecentPostsAsync(AuthSession.CurrentUser);
+		await LoadAuthorProfilesAsync();
+	}
+
+	private async Task LoadAuthorProfilesAsync()
+	{
+		AuthorProfiles = [];
+		AuthorUsers = [];
+		foreach (var userId in FeedPosts.Select(post => post.UserId).Where(userId => userId > 0).Distinct())
+		{
+			try
+			{
+				var profile = await AuthSession.GetForumProfileAsync(userId);
+				if (profile is not null)
+				{
+					AuthorProfiles[userId] = profile;
+				}
+
+				var user = await AuthSession.GetUserAsync(userId);
+				if (user is not null)
+				{
+					AuthorUsers[userId] = user;
+				}
+			}
+			catch
+			{
+				// Keep the posts page available even if an author lookup fails.
+			}
+		}
+	}
+
+	private void OpenComposer()
+	{
+		ComposerError = string.Empty;
+		IsComposerOpen = true;
+	}
+
+	private void CloseComposer() => IsComposerOpen = false;
+
+	private void OnTagsInput(ChangeEventArgs args)
+	{
+		tagSearch = args.Value?.ToString() ?? string.Empty;
+	}
+
+	private void OnPostSearchInput(ChangeEventArgs args)
+	{
+		postSearch = args.Value?.ToString() ?? string.Empty;
+	}
+
+	private void OnFeedTagSearchInput(ChangeEventArgs args)
+	{
+		feedTagSearch = args.Value?.ToString() ?? string.Empty;
+	}
+
+	private async Task OnArtistInputAsync(ChangeEventArgs args)
+	{
+		var nextArtist = args.Value?.ToString() ?? string.Empty;
+		if (!string.Equals(Draft.Selection.Artist, nextArtist, StringComparison.Ordinal))
+		{
+			Draft.Selection.Artist = nextArtist;
+			Draft.Selection.ArtistId = 0;
+			Draft.Selection.Album = string.Empty;
+			Draft.Selection.AlbumId = 0;
+		}
+
+		artistResults = [];
+		albumResults = [];
+		await DebounceArtistSearchAsync();
+	}
+
+	private async Task OnAlbumInputAsync(ChangeEventArgs args)
+	{
+		Draft.Selection.Album = args.Value?.ToString() ?? string.Empty;
+		Draft.Selection.AlbumId = 0;
+		albumResults = [];
+		await DebounceAlbumSearchAsync();
+	}
+
+	private void SelectArtistAsync(MusicRUs.Models.MusicArtist artist)
+	{
+		Draft.Selection.Artist = artist.Name;
+		Draft.Selection.ArtistId = artist.Id;
+		Draft.Selection.Album = string.Empty;
+		Draft.Selection.AlbumId = 0;
+		artistResults = [];
+		albumResults = [];
+		ComposerError = string.Empty;
+	}
+
+	private void SelectAlbumAsync(MusicRUs.Models.MusicAlbum album)
+	{
+		Draft.Selection.Album = album.Title;
+		Draft.Selection.AlbumId = album.Id;
+		albumResults = [];
+		ComposerError = string.Empty;
+	}
+
+	private void AddTag(string tag)
+	{
+		if (!selectedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+		{
+            ToastService.Show("Tag added");
+
+			selectedTags.Add(tag);
+		}
+
+		tagSearch = string.Empty;
+		SyncDraftTags();
+	}
+
+	private void RemoveTag(string tag)
+	{
+		selectedTags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
+		SyncDraftTags();
+	}
+
+	private void AddFeedTag(string tag)
+	{
+		if (!selectedFeedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+		{
+            ToastService.Show("Tag added");
+
+			selectedFeedTags.Add(tag);
+		}
+
+		feedTagSearch = string.Empty;
+	}
+
+	private void RemoveFeedTag(string tag)
+	{
+		selectedFeedTags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
+	}
+
+	private async Task DeletePostAsync(MusicRUs.Models.PostItem post)
+	{
+		if (!IsOwnPost(post))
+		{
+			return;
+		}
+
+		if (await PostFeed.DeletePostAsync(post, AuthSession.CurrentUser))
+		{
+            ToastService.Show("Post deleted successfully!");
+
+			await LoadFeedAsync();
+		}
+	}
+
+	private async Task CreatePostAsync()
+	{
+		if (string.IsNullOrWhiteSpace(AuthSession.CurrentUser?.Username))
+		{
+			return;
+		}
+
+		ComposerError = string.Empty;
+		if (Draft.RequiresMusicSelection && (Draft.Selection.ArtistId <= 0 || Draft.Selection.AlbumId <= 0))
+		{
+			ComposerError = "Select a matching artist and album, or switch music selection off.";
+			return;
+		}
+
+		try
+		{
+			await PostFeed.CreatePostAsync(Draft, AuthSession.CurrentUser);
+		}
+		catch (InvalidOperationException exception)
+		{
+			ComposerError = exception.Message;
+			return;
+		}
+		catch (HttpRequestException)
+		{
+			ComposerError = "Could not reach the API. Your draft has been kept. Please try again.";
+			return;
+		}
+		catch (OperationCanceledException)
+		{
+			ComposerError = "The save request timed out. Check the feed before trying again. Your draft has been kept.";
+			return;
+		}
+		Draft.Title = string.Empty;
+		Draft.Body = string.Empty;
+		Draft.TagsText = string.Empty;
+		tagSearch = string.Empty;
+		selectedTags = [];
+		Draft.RequiresMusicSelection = true;
+		Draft.Selection = new MusicRUs.Models.MusicSelection();
+		await LoadFeedAsync();
+		IsComposerOpen = false;
+
+        ToastService.Show("Post created successfully!");
+
+		Navigation.NavigateTo("/posts", forceLoad: false);
+	}
+
+	private async Task DebounceArtistSearchAsync()
+	{
+		CancelArtistSearchDebounce();
+
+		if (Draft.Selection.Artist.Trim().Length < 2)
+		{
+			isSearchingArtists = false;
+			return;
+		}
+
+		var debounce = new CancellationTokenSource();
+		artistSearchDebounce = debounce;
+		isSearchingArtists = true;
+		await InvokeAsync(StateHasChanged);
+
+		try
+		{
+			await Task.Delay(TimeSpan.FromSeconds(2), debounce.Token);
+			artistResults = (await AuthSession.SearchArtistsAsync(Draft.Selection.Artist, debounce.Token))
+				.Take(5)
+				.ToList();
+		}
+		catch (OperationCanceledException)
+		{
+			return;
+		}
+		finally
+		{
+			if (ReferenceEquals(artistSearchDebounce, debounce))
+			{
+				artistSearchDebounce = null;
+				isSearchingArtists = false;
+				debounce.Dispose();
+				await InvokeAsync(StateHasChanged);
+			}
+		}
+	}
+
+	private async Task DebounceAlbumSearchAsync()
+	{
+		CancelAlbumSearchDebounce();
+
+		if (Draft.Selection.ArtistId <= 0 || Draft.Selection.Album.Trim().Length < 2)
+		{
+			isSearchingAlbums = false;
+			return;
+		}
+
+		var debounce = new CancellationTokenSource();
+		albumSearchDebounce = debounce;
+		isSearchingAlbums = true;
+		await InvokeAsync(StateHasChanged);
+
+		try
+		{
+			await Task.Delay(TimeSpan.FromSeconds(2), debounce.Token);
+			var albumSearch = Draft.Selection.Album.Trim();
+			albumResults = (await AuthSession.GetAlbumsByArtistAsync(Draft.Selection.ArtistId, debounce.Token))
+				.Where(album => !string.IsNullOrWhiteSpace(album.Title))
+				.Where(album => album.Title.Contains(albumSearch, StringComparison.OrdinalIgnoreCase))
+				.Take(5)
+				.ToList();
+		}
+		catch (OperationCanceledException)
+		{
+			return;
+		}
+		finally
+		{
+			if (ReferenceEquals(albumSearchDebounce, debounce))
+			{
+				albumSearchDebounce = null;
+				isSearchingAlbums = false;
+				debounce.Dispose();
+				await InvokeAsync(StateHasChanged);
+			}
+		}
+	}
+
+	private IEnumerable<string> GetGenreSuggestions()
+	{
+		return genreOptions
+			.Select(genre => genre.Name)
+			.Distinct(StringComparer.OrdinalIgnoreCase);
+	}
+
+	private static IReadOnlyList<string> FilterSuggestions(IEnumerable<string> suggestions, string search, IEnumerable<string>? excluded = null)
+	{
+		var excludedSet = new HashSet<string>(excluded ?? [], StringComparer.OrdinalIgnoreCase);
+		var trimmedSearch = search.Trim();
+		return suggestions
+			.Where(suggestion => !string.IsNullOrWhiteSpace(suggestion))
+			.Where(suggestion => !excludedSet.Contains(suggestion))
+			.Where(suggestion => string.IsNullOrWhiteSpace(trimmedSearch) || suggestion.Contains(trimmedSearch, StringComparison.OrdinalIgnoreCase))
+			.Take(8)
+			.ToList();
+	}
+
+	private void SyncDraftTags()
+	{
+		Draft.TagsText = string.Join(", ", selectedTags.Distinct(StringComparer.OrdinalIgnoreCase));
+	}
+
+	private bool MatchesPostSearch(MusicRUs.Models.PostItem post)
+	{
+		var search = postSearch.Trim();
+		if (string.IsNullOrWhiteSpace(search))
+		{
+			return true;
+		}
+
+		return ContainsSearch(post.Title, search)
+			|| ContainsSearch(post.Body, search)
+			|| ContainsSearch(post.Artist, search)
+			|| ContainsSearch(post.Album, search)
+			|| post.Tags.Any(tag => ContainsSearch(tag, search))
+			|| ContainsSearch(GetAuthorDisplayName(post), search);
+	}
+
+	private bool MatchesFeedTags(MusicRUs.Models.PostItem post)
+	{
+		return selectedFeedTags.Count == 0
+			|| selectedFeedTags.All(selectedTag => post.Tags.Any(postTag => string.Equals(postTag, selectedTag, StringComparison.OrdinalIgnoreCase)));
+	}
+
+	private static bool ContainsSearch(string? value, string search)
+	{
+		return !string.IsNullOrWhiteSpace(value)
+			&& value.Contains(search, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool HasMusicSelection(MusicRUs.Models.PostItem post)
+	{
+		return !string.IsNullOrWhiteSpace(post.Artist)
+			|| !string.IsNullOrWhiteSpace(post.Album);
+	}
+
+	private bool IsHighlightedOwnPost(MusicRUs.Models.PostItem post)
+	{
+		return MusicRUs.Services.PostFeedService.IsRecentOwnPost(post, AuthSession.CurrentUser);
+	}
+
+	private bool IsOwnPost(MusicRUs.Models.PostItem post)
+	{
+		return MusicRUs.Services.PostFeedService.IsOwnPost(post, AuthSession.CurrentUser);
+	}
+
+	private string GetPostCardClass(MusicRUs.Models.PostItem post)
+	{
+		var highlightClasses = IsHighlightedOwnPost(post)
+			? "border-pine-teal-400/60 bg-coffee-bean-900/90"
+			: "border-granite-800/70 bg-coffee-bean-950/70";
+
+		return $"group rounded-3xl border {highlightClasses} p-5 transition hover:-translate-y-0.5 hover:border-pine-teal-400/40 hover:bg-coffee-bean-900/80";
+	}
+
+	private string GetAuthorDisplayName(MusicRUs.Models.PostItem post)
+	{
+		if (post.UserId > 0 && AuthorProfiles.TryGetValue(post.UserId, out var profile) && !string.IsNullOrWhiteSpace(profile.DisplayName))
+		{
+			return profile.DisplayName;
+		}
+
+		return post.UserId > 0 && AuthorUsers.TryGetValue(post.UserId, out var user) && !string.IsNullOrWhiteSpace(user.Username)
+			? user.Username
+			: $"User {post.UserId}";
+	}
+
+	private string GetAuthorProfileUrl(MusicRUs.Models.PostItem post)
+	{
+		if (post.UserId > 0)
+		{
+			return $"/profile/{post.UserId}";
+		}
+
+		return "/posts";
+	}
+
+	public void Dispose()
+	{
+		CancelArtistSearchDebounce();
+		CancelAlbumSearchDebounce();
+	}
+
+	private void CancelArtistSearchDebounce()
+	{
+		var debounce = artistSearchDebounce;
+		artistSearchDebounce = null;
+		if (debounce is null)
+		{
+			return;
+		}
+
+		try
+		{
+			debounce.Cancel();
+		}
+		catch (ObjectDisposedException)
+		{
+		}
+
+		debounce.Dispose();
+	}
+
+	private void CancelAlbumSearchDebounce()
+	{
+		var debounce = albumSearchDebounce;
+		albumSearchDebounce = null;
+		if (debounce is null)
+		{
+			return;
+		}
+
+		try
+		{
+			debounce.Cancel();
+		}
+		catch (ObjectDisposedException)
+		{
+		}
+
+		debounce.Dispose();
+	}
+}

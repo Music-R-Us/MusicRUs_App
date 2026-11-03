@@ -215,6 +215,8 @@
 			return;
 		}
 
+		ToastService?.Show("Logged in with google successfully");
+		
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
 

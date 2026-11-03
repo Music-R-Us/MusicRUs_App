@@ -11,19 +11,25 @@ public sealed class AuthSessionService
 	private readonly HttpClient httpClient;
 	private readonly BackendApiClient apiClient;
 	private readonly ForumProfileService forumProfiles;
+	private readonly UserLookupService userLookup;
+	private readonly MusicCatalogService musicCatalog;
 	private bool initialized;
 
 	public AuthSessionService(
 		IJSRuntime jsRuntime,
 		HttpClient httpClient,
 		BackendApiClient apiClient,
-		ForumProfileService forumProfiles
+		ForumProfileService forumProfiles,
+		UserLookupService userLookup,
+		MusicCatalogService musicCatalog
 	)
 	{
 		this.jsRuntime = jsRuntime;
 		this.httpClient = httpClient;
 		this.apiClient = apiClient;
 		this.forumProfiles = forumProfiles;
+		this.userLookup = userLookup;
+		this.musicCatalog = musicCatalog;
 	}
 
 	public event Action? Changed;
@@ -174,6 +180,17 @@ public sealed class AuthSessionService
 		await InitializeAsync();
 		return await forumProfiles.IsForumProfileSetupCompleteAsync(user, cancellationToken);
 	}
+	public async Task<UserSession?> GetUserAsync(int userId, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await userLookup.GetUserAsync(userId, CurrentUser, cancellationToken);
+	}
+
+	public async Task<List<MusicAlbum>> GetAlbumsByArtistAsync(int artistId, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await musicCatalog.GetAlbumsByArtistAsync(artistId, CurrentUser, cancellationToken);
+	}
 
 	public async Task<bool> SaveForumProfileAsync(ForumProfile profile, CancellationToken cancellationToken = default)
 	{
@@ -197,16 +214,14 @@ public sealed class AuthSessionService
 	{
 		await InitializeAsync();
 		if (query.Trim().Length < 2) return [];
-		return await apiClient.GetAsync<List<MusicArtist>>(
-			$"api/Artist/search?keyword={Uri.EscapeDataString(query.Trim())}", CurrentUser?.AccessToken, cancellationToken) ?? [];
+		return await musicCatalog.SearchArtistsAsync(query, CurrentUser, cancellationToken);
 	}
 
 	public async Task<List<MusicAlbum>> SearchAlbumsAsync(string query, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		if (query.Trim().Length < 2) return [];
-		return await apiClient.GetAsync<List<MusicAlbum>>(
-			$"api/Album/search?keyword={Uri.EscapeDataString(query.Trim())}", CurrentUser?.AccessToken, cancellationToken) ?? [];
+		return await musicCatalog.SearchAlbumsAsync(query, CurrentUser, cancellationToken);
 	}
 
 	private static bool IsPrerenderInteropException(InvalidOperationException exception)

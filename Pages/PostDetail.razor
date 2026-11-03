@@ -1,0 +1,310 @@
+@page "/posts/{PostId}"
+@using MusicRUs.Services
+@layout MainLayout
+
+@inject MusicRUs.Services.PostFeedService PostFeed
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject MusicRUs.Services.ToastService ToastService
+@inject NavigationManager Navigation
+
+<PageTitle>@(Post?.Title ?? "Post")</PageTitle>
+
+@if (Post is null)
+{
+	<section class="rounded-4xl border border-granite-800/80 gradient-surface p-8 text-porcelain-50 backdrop-blur">
+		<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Posts</p>
+		<h1 class="mt-3 text-4xl font-semibold tracking-tight">Post not found</h1>
+		<p class="mt-4 text-porcelain-50/75">The post you selected no longer exists.</p>
+		<button class="mt-6 rounded-full bg-pine-teal-400 px-5 py-3 text-sm font-semibold text-coffee-bean-950" type="button" @onclick="GoBack">Back to posts</button>
+	</section>
+}
+else
+{
+	<section class="grid gap-6">
+		<div class="rounded-4xl border border-granite-800/80 gradient-surface p-8 backdrop-blur">
+			<div class="grid gap-3">
+				<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Post detail</p>
+				<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">@Post.Title</h1>
+				<div class="flex flex-wrap items-center gap-2 text-sm text-porcelain-50/70">
+					<span>•</span>
+					<a href="@PostAuthorProfileUrl" class="font-semibold text-pine-teal-200 underline-offset-4 transition hover:text-pine-teal-100 hover:underline">@PostAuthorDisplayName</a>
+					<span>•</span>
+					<span>@DisplayTime.Format(Post.CreatedAtUtc)</span>
+					@if (IsOwnPost)
+					{
+						<button type="button"
+							@onclick="DeletePostAsync"
+							class="rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-100 transition hover:border-red-300 hover:bg-red-400/20">
+							Delete post
+						</button>
+					}
+				</div>
+			</div>
+
+			<div class="mt-6 grid gap-4 rounded-3xl border border-granite-800/80 bg-coffee-bean-950/60 p-6">
+				<p class="text-base leading-7 text-porcelain-50/85">@Post.Body</p>
+				<div class="flex flex-wrap gap-2 text-sm text-porcelain-50/70">
+					@foreach (var tag in Post.Tags)
+					{
+						<span class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1">#@tag</span>
+					}
+				</div>
+				@if (HasMusicSelection(Post))
+				{
+					<div class="grid gap-1 border-t border-granite-800 pt-4 text-sm text-porcelain-50/70 sm:grid-cols-2">
+						<p><span class="block text-xs uppercase tracking-[0.24em] text-pine-teal-300">Artist</span>@Post.Artist</p>
+						<p><span class="block text-xs uppercase tracking-[0.24em] text-pine-teal-300">Album</span>@Post.Album</p>
+					</div>
+				}
+			</div>
+		</div>
+
+		<div class="grid gap-4 rounded-4xl border border-granite-800/80 bg-coffee-bean-950/70 p-8 backdrop-blur">
+            @if(AuthSession.CurrentUser is not null)
+            {
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Comments</p>
+                        <h2 class="mt-2 text-2xl font-semibold text-porcelain-50">Join the conversation</h2>
+                    </div>
+                    <p class="text-sm text-porcelain-50/60">@CommentPage.TotalCount replies</p>
+                </div>
+
+                <EditForm Model="CommentDraft" OnValidSubmit="AddCommentAsync" class="grid gap-4">
+                    <InputText @bind-Value="CommentDraft" placeholder="Write a comment..." class="w-full rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+                    <button class="inline-flex min-h-12 w-full cursor-pointer items-center justify-center justify-self-end rounded-full border-2 border-teal-200 bg-teal-300 px-6 py-3 text-base font-bold leading-6 text-stone-950 transition-colors hover:bg-teal-200 focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-white sm:w-auto" type="submit">Send comment</button>
+                </EditForm>
+            }
+			<div class="grid gap-3">
+				@if (CommentPage.Comments.Count == 0)
+				{
+					<div class="rounded-3xl border border-granite-800/70 bg-coffee-bean-900/70 p-4 text-porcelain-50/70">
+						No comments yet.
+					</div>
+				}
+				else
+				{
+					@foreach (var comment in CommentPage.Comments)
+					{
+						<div class="rounded-3xl border border-granite-800/70 bg-coffee-bean-900/70 p-4">
+							<div class="flex items-start justify-between gap-4 text-sm text-porcelain-50/60">
+								<div class="flex min-w-0 items-center gap-3">
+									@if (!string.IsNullOrWhiteSpace(GetCommentAuthorAvatarUrl(comment)))
+									{
+										<img src="@GetCommentAuthorAvatarUrl(comment)" alt="@GetCommentAuthor(comment) avatar" class="h-11 w-11 shrink-0 rounded-full bg-pine-teal-300 object-cover" />
+									}
+									else
+									{
+										<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pine-teal-300 text-sm font-semibold uppercase text-coffee-bean-950">
+											@GetCommentAuthorInitial(comment)
+										</span>
+									}
+									<a href="@GetCommentAuthorProfileUrl(comment)" class="truncate font-medium text-porcelain-50 underline-offset-4 transition hover:text-pine-teal-200 hover:underline">@GetCommentAuthor(comment)</a>
+								</div>
+								<div class="flex shrink-0 items-center gap-2">
+									<p>@DisplayTime.Format(comment.CreatedAtUtc)</p>
+									@if (IsOwnComment(comment))
+									{
+										<button type="button"
+											@onclick="() => DeleteCommentAsync(comment)"
+											class="rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-100 transition hover:border-red-300 hover:bg-red-400/20">
+											Delete
+										</button>
+									}
+								</div>
+							</div>
+							<p class="mt-2 leading-7 text-porcelain-50/80">@comment.DisplayBody</p>
+						</div>
+					}
+				}
+			</div>
+
+			@if (CommentPage.TotalPages > 1)
+			{
+				<div class="flex flex-wrap items-center justify-between gap-3 border-t border-granite-800 pt-4">
+					<button class="rounded-full border border-granite-700 px-4 py-2 text-sm font-medium text-porcelain-50/80 transition enabled:hover:bg-granite-900 disabled:opacity-40" type="button" disabled="@(CommentPage.Page <= 1)" @onclick="PreviousCommentsPageAsync">Previous</button>
+					<span class="text-sm text-porcelain-50/60">Page @CommentPage.Page of @CommentPage.TotalPages</span>
+					<button class="rounded-full border border-granite-700 px-4 py-2 text-sm font-medium text-porcelain-50/80 transition enabled:hover:bg-granite-900 disabled:opacity-40" type="button" disabled="@(CommentPage.Page >= CommentPage.TotalPages)" @onclick="NextCommentsPageAsync">Next</button>
+				</div>
+			}
+		</div>
+	</section>
+}
+
+@code {
+	[Parameter]
+	public string PostId { get; set; } = string.Empty;
+
+	private MusicRUs.Models.PostItem? Post;
+	private string CommentDraft = string.Empty;
+	private MusicRUs.Models.CommentPage CommentPage = MusicRUs.Models.CommentPage.Empty(1, CommentsPageSize);
+	private Dictionary<int, MusicRUs.Models.ForumProfile> CommentProfiles = [];
+	private Dictionary<int, MusicRUs.Models.UserSession> CommentUsers = [];
+	private MusicRUs.Models.ForumProfile? PostAuthorProfile;
+	private MusicRUs.Models.UserSession? PostAuthorUser;
+	private const int CommentsPageSize = 10;
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await AuthSession.InitializeAsync();
+		Post = await PostFeed.GetPostAsync(PostId);
+		PostAuthorProfile = Post?.UserId > 0
+			? await AuthSession.GetForumProfileAsync(Post.UserId)
+			: null;
+		PostAuthorUser = Post?.UserId > 0
+			? await AuthSession.GetUserAsync(Post.UserId)
+			: null;
+		await LoadCommentsAsync(1);
+	}
+
+	private void GoBack() => Navigation.NavigateTo("/posts");
+
+	private async Task AddCommentAsync()
+	{
+		if (Post is null || string.IsNullOrWhiteSpace(CommentDraft))
+		{
+			return;
+		}
+
+		await PostFeed.AddCommentAsync(Post, AuthSession.CurrentUser, CommentDraft);
+		CommentDraft = string.Empty;
+
+        ToastService?.Show("Comment added successfully.");
+
+		await LoadCommentsAsync(1);
+	}
+
+	private async Task DeletePostAsync()
+	{
+		if (Post is null || !IsOwnPost)
+		{
+			return;
+		}
+
+		if (await PostFeed.DeletePostAsync(Post, AuthSession.CurrentUser))
+		{
+            ToastService?.Show("Post deleted successfully.");
+
+			Navigation.NavigateTo("/posts");
+		}
+	}
+
+	private async Task DeleteCommentAsync(MusicRUs.Models.CommentItem comment)
+	{
+		if (Post is null || !IsOwnComment(comment))
+		{
+			return;
+		}
+
+		if (await PostFeed.DeleteCommentAsync(Post, comment, AuthSession.CurrentUser))
+		{
+			ToastService?.Show("Comment deleted successfully.");
+
+			await LoadCommentsAsync(CommentPage.Page);
+		}
+	}
+
+	private async Task LoadCommentsAsync(int page)
+	{
+		if (Post is null)
+		{
+			CommentPage = MusicRUs.Models.CommentPage.Empty(1, CommentsPageSize);
+			return;
+		}
+
+		CommentPage = await PostFeed.GetCommentsAsync(Post, page, CommentsPageSize);
+		await LoadCommentProfilesAsync();
+	}
+
+	private async Task LoadCommentProfilesAsync()
+	{
+		CommentProfiles = [];
+		CommentUsers = [];
+		foreach (var userId in CommentPage.Comments.Select(comment => comment.UserId).Where(userId => userId > 0).Distinct())
+		{
+			var profile = await AuthSession.GetForumProfileAsync(userId);
+			if (profile is not null)
+			{
+				CommentProfiles[userId] = profile;
+			}
+
+			var user = await AuthSession.GetUserAsync(userId);
+			if (user is not null)
+			{
+				CommentUsers[userId] = user;
+			}
+		}
+	}
+
+	private async Task PreviousCommentsPageAsync()
+	{
+		await LoadCommentsAsync(Math.Max(1, CommentPage.Page - 1));
+	}
+
+	private async Task NextCommentsPageAsync()
+	{
+		await LoadCommentsAsync(Math.Min(CommentPage.TotalPages, CommentPage.Page + 1));
+	}
+
+	private static bool HasMusicSelection(MusicRUs.Models.PostItem post)
+	{
+		return !string.IsNullOrWhiteSpace(post.Artist)
+			|| !string.IsNullOrWhiteSpace(post.Album);
+	}
+
+	private string PostAuthorDisplayName => !string.IsNullOrWhiteSpace(PostAuthorProfile?.DisplayName)
+		? PostAuthorProfile.DisplayName
+		: !string.IsNullOrWhiteSpace(PostAuthorUser?.Username) ? PostAuthorUser.Username : $"User {Post?.UserId ?? 0}";
+
+	private string PostAuthorProfileUrl => Post?.UserId > 0
+		? $"/profile/{Post.UserId}"
+		: "/posts";
+
+	private bool IsOwnPost => Post is not null
+		&& MusicRUs.Services.PostFeedService.IsOwnPost(Post, AuthSession.CurrentUser);
+
+	private bool IsOwnComment(MusicRUs.Models.CommentItem comment)
+	{
+		return MusicRUs.Services.PostFeedService.IsOwnComment(comment, AuthSession.CurrentUser);
+	}
+
+	private string GetCommentAuthor(MusicRUs.Models.CommentItem comment)
+	{
+		var profile = GetCommentAuthorProfile(comment);
+		if (!string.IsNullOrWhiteSpace(profile?.DisplayName))
+		{
+			return profile.DisplayName;
+		}
+
+		return comment.UserId > 0 && CommentUsers.TryGetValue(comment.UserId, out var user) && !string.IsNullOrWhiteSpace(user.Username)
+			? user.Username
+			: $"User {comment.UserId}";
+	}
+
+	private MusicRUs.Models.ForumProfile? GetCommentAuthorProfile(MusicRUs.Models.CommentItem comment)
+	{
+		return comment.UserId > 0 && CommentProfiles.TryGetValue(comment.UserId, out var profile)
+			? profile
+			: null;
+	}
+
+	private string GetCommentAuthorAvatarUrl(MusicRUs.Models.CommentItem comment)
+	{
+		return GetCommentAuthorProfile(comment)?.AvatarUrl ?? string.Empty;
+	}
+
+	private string GetCommentAuthorInitial(MusicRUs.Models.CommentItem comment)
+	{
+		var author = GetCommentAuthor(comment);
+		return string.IsNullOrWhiteSpace(author)
+			? "?"
+			: author.Trim()[0].ToString().ToUpperInvariant();
+	}
+
+	private static string GetCommentAuthorProfileUrl(MusicRUs.Models.CommentItem comment)
+	{
+		return comment.UserId > 0
+			? $"/profile/{comment.UserId}"
+			: "/posts";
+	}
+}

@@ -27,11 +27,11 @@ public sealed class CreateForumPostRequest
 
 	public string Content { get; set; } = string.Empty;
 
-	public int TrackId { get; set; }
+	public int? TrackId { get; set; }
 
-	public int AlbumId { get; set; }
+	public int? AlbumId { get; set; }
 
-	public int ArtistId { get; set; }
+	public int? ArtistId { get; set; }
 }
 
 public sealed class CreatePostTagRequest
