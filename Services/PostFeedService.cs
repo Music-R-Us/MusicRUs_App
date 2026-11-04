@@ -54,6 +54,16 @@ public sealed class PostFeedService
 
 	public async Task<PostItem> CreatePostAsync(PostDraft draft, UserSession user, CancellationToken cancellationToken = default)
 	{
+		if (draft.Title.Trim().Length < 8)
+		{
+			throw new InvalidOperationException("The title must be at least 8 characters long, excluding leading and trailing spaces.");
+		}
+
+		if (draft.Body.Trim().Length < 8)
+		{
+			throw new InvalidOperationException("The post content must be at least 8 characters long, excluding leading and trailing spaces.");
+		}
+
 		var request = new CreatePostRequest
 		{
 			Title = draft.Title.Trim(),
@@ -61,7 +71,7 @@ public sealed class PostFeedService
 			Genre = draft.Genre.Trim(),
 			Artist = draft.RequiresMusicSelection ? draft.Selection.Artist.Trim() : string.Empty,
 			Album = draft.RequiresMusicSelection ? draft.Selection.Album.Trim() : string.Empty,
-			Song = string.Empty,
+			Song = draft.RequiresMusicSelection && draft.MusicType == MusicLinkType.Track ? draft.Selection.Track.Trim() : string.Empty,
 			Tags = SplitTags(draft.TagsText),
 			Author = string.IsNullOrWhiteSpace(user.Username) ? "anonymous" : user.Username.Trim()
 		};
@@ -78,15 +88,14 @@ public sealed class PostFeedService
 				UserId = user.UserId,
 				Title = request.Title,
 				Content = request.Body,
-				TrackId = null,
-				AlbumId = draft.RequiresMusicSelection ? draft.Selection.AlbumId : null,
-				ArtistId = draft.RequiresMusicSelection ? draft.Selection.ArtistId : null
+				TrackId = draft.RequiresMusicSelection && draft.MusicType == MusicLinkType.Track && draft.Selection.TrackId > 0 ? draft.Selection.TrackId : null,
+				AlbumId = draft.RequiresMusicSelection && draft.MusicType == MusicLinkType.Album && draft.Selection.AlbumId > 0 ? draft.Selection.AlbumId : null,
+				ArtistId = draft.RequiresMusicSelection && draft.MusicType == MusicLinkType.Artist && draft.Selection.ArtistId > 0 ? draft.Selection.ArtistId : null,
+				GenreIds = draft.GenreIds.Where(id => id > 0).Distinct().ToList()
 			};
 			var postFromApi = await TryPostForumPostAsync(forumRequest, request.Author, user.AccessToken, cancellationToken);
 			if (postFromApi is not null)
 			{
-				postFromApi.Tags = request.Tags;
-				await TryPostTagsAsync(postFromApi, request.Tags, user.AccessToken, cancellationToken);
 				return postFromApi;
 			}
 		}
@@ -290,7 +299,6 @@ public sealed class PostFeedService
 			using var document = JsonDocument.Parse(content);
 			var posts = PostFeedMapper.ReadPostList(document.RootElement);
 			await PopulateCommentCountsAsync(posts, cancellationToken);
-			await PopulatePostTagsAsync(posts, cancellationToken);
 			return posts;
 		}
 		catch
@@ -315,7 +323,6 @@ public sealed class PostFeedService
 			if (post is not null)
 			{
 				await PopulateCommentCountsAsync([post], cancellationToken);
-				await PopulatePostTagsAsync([post], cancellationToken);
 			}
 
 			return post;
@@ -342,8 +349,21 @@ public sealed class PostFeedService
 			try
 			{
 				using var error = JsonDocument.Parse(content);
-				var detail = JsonElementReader.GetString(error.RootElement, "detail", "message", "title");
+				var detail = JsonElementReader.GetString(error.RootElement, "error", "detail", "message", "title");
 				if (!string.IsNullOrWhiteSpace(detail)) message += $" {detail}";
+				if (JsonElementReader.TryGetProperty(error.RootElement, "errors", out var errors)
+					&& errors.ValueKind == JsonValueKind.Object)
+				{
+					foreach (var field in errors.EnumerateObject())
+					{
+						if (field.Value.ValueKind != JsonValueKind.Array) continue;
+						foreach (var validationError in field.Value.EnumerateArray())
+						{
+							if (validationError.ValueKind == JsonValueKind.String)
+								message += $" {field.Name}: {validationError.GetString()}";
+						}
+					}
+				}
 			}
 			catch (JsonException) { }
 			throw new InvalidOperationException(message);
@@ -368,73 +388,6 @@ public sealed class PostFeedService
 			Author = author,
 			CreatedAtUtc = DisplayTime.Now
 		};
-	}
-
-	private async Task PopulatePostTagsAsync(IEnumerable<PostItem> postsToPopulate, CancellationToken cancellationToken)
-	{
-		foreach (var post in postsToPopulate)
-		{
-			if (post.PostId <= 0)
-			{
-				continue;
-			}
-
-			var tags = await TryGetPostTagsAsync(post.PostId, cancellationToken);
-			if (tags.Count > 0)
-			{
-				post.Tags = tags;
-			}
-		}
-	}
-
-	private async Task<List<string>> TryGetPostTagsAsync(int postId, CancellationToken cancellationToken)
-	{
-		try
-		{
-			using var response = await httpClient.GetAsync($"api/PostTags/post/{postId}", cancellationToken);
-			if (!response.IsSuccessStatusCode)
-			{
-				return [];
-			}
-
-			var content = await response.Content.ReadAsStringAsync(cancellationToken);
-			using var document = JsonDocument.Parse(content);
-			return PostFeedMapper.ReadPostTagList(document.RootElement);
-		}
-		catch
-		{
-			return [];
-		}
-	}
-
-	private async Task TryPostTagsAsync(PostItem post, IEnumerable<string> tags, string accessToken, CancellationToken cancellationToken)
-	{
-		if (post.PostId <= 0)
-		{
-			return;
-		}
-
-		foreach (var tag in tags.Where(tag => !string.IsNullOrWhiteSpace(tag)).Distinct(StringComparer.OrdinalIgnoreCase))
-		{
-			try
-			{
-				using var request = new HttpRequestMessage(HttpMethod.Post, "api/PostTags")
-				{
-					Content = JsonContent.Create(new CreatePostTagRequest
-					{
-						PostId = post.PostId,
-						Genre = tag.Trim(),
-						Tag = tag.Trim()
-					})
-				};
-				AddAuthorizationHeader(request, accessToken);
-				await httpClient.SendAsync(request, cancellationToken);
-			}
-			catch
-			{
-				continue;
-			}
-		}
 	}
 
 	private async Task<List<CommentItem>?> TryGetCommentsForPostAsync(int postId, CancellationToken cancellationToken)

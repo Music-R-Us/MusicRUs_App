@@ -87,14 +87,15 @@ public sealed class MusicCatalogService
 			return [];
 		}
 
-		var paged = await apiClient.GetAsync<MusicPagedResult<MusicTrack>>(
-			$"api/Tracks/album/{albumId}?page=1&pageSize=50", currentUser?.AccessToken, cancellationToken);
-		if (paged?.Items is { Count: > 0 })
+		var album = await apiClient.GetAsync<MusicAlbum>(
+			$"api/Album/{albumId}", currentUser?.AccessToken, cancellationToken);
+		cancellationToken.ThrowIfCancellationRequested();
+		if (album is null)
 		{
-			return paged.Items;
+			throw new HttpRequestException("Could not load the album's tracks.");
 		}
 
-		return await apiClient.GetAsync<List<MusicTrack>>($"api/Tracks/album/{albumId}", currentUser?.AccessToken, cancellationToken) ?? [];
+		return album.Tracks ?? [];
 	}
 
 	public async Task<List<MusicCollectionItem>> GetCollectionAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default)

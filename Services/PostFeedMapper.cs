@@ -33,6 +33,10 @@ internal static class PostFeedMapper
 			Id = id,
 			PostId = JsonElementReader.GetInt(element, "postId", "forumPostId") ?? (JsonElementReader.GetInt(element, "id") ?? 0),
 			UserId = JsonElementReader.GetInt(element, "userId") ?? 0,
+			TrackId = JsonElementReader.GetInt(element, "trackId"),
+			AlbumId = JsonElementReader.GetInt(element, "albumId"),
+			ArtistId = JsonElementReader.GetInt(element, "artistId"),
+			UpdatedAtUtc = GetJsonDate(element, "updatedAt", "updatedAtUtc"),
 			Title = JsonElementReader.GetString(element, "title", "subject") ?? string.Empty,
 			Body = JsonElementReader.GetString(element, "body", "content", "post", "text") ?? string.Empty,
 			Genre = JsonElementReader.GetString(element, "genre", "genreName") ?? string.Empty,
@@ -45,6 +49,45 @@ internal static class PostFeedMapper
 			Tags = GetJsonStringList(element, "tags")
 		};
 
+		if (JsonElementReader.TryGetProperty(element, "genres", out var genres) && genres.ValueKind == JsonValueKind.Array)
+		{
+			post.Genres = genres.EnumerateArray()
+				.Where(genre => genre.ValueKind == JsonValueKind.Object)
+				.Select(genre => new GenreOption
+				{
+					Id = JsonElementReader.GetInt(genre, "id") ?? 0,
+					Name = JsonElementReader.GetString(genre, "name") ?? string.Empty
+				})
+				.ToList();
+			post.Tags = post.Genres.Select(genre => genre.Name)
+				.Where(name => !string.IsNullOrWhiteSpace(name))
+				.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+			post.Genre = string.Join(", ", post.Tags);
+		}
+
+		post.Artist = ReadMusicName(element, "artist", "name", "artistName") ?? post.Artist;
+		post.ArtistImageUrl = ReadMusicName(element, "artist", "imageUrl") ?? string.Empty;
+		post.Album = ReadMusicName(element, "album", "title", "name") ?? post.Album;
+		post.AlbumImageUrl = ReadMusicName(element, "album", "imageUrl") ?? string.Empty;
+		post.Song = ReadMusicName(element, "track", "title", "name") ?? post.Song;
+		if (JsonElementReader.TryGetProperty(element, "track", out var track) && track.ValueKind == JsonValueKind.Object)
+		{
+			post.TrackAlbumId = JsonElementReader.GetInt(track, "albumId");
+			post.TrackImageUrl = JsonElementReader.GetString(track, "imageUrl") ?? string.Empty;
+			if (JsonElementReader.TryGetProperty(track, "album", out var album) && album.ValueKind == JsonValueKind.Object)
+			{
+				post.TrackAlbumId ??= JsonElementReader.GetInt(album, "id");
+				if (string.IsNullOrWhiteSpace(post.TrackImageUrl))
+					post.TrackImageUrl = JsonElementReader.GetString(album, "imageUrl") ?? string.Empty;
+			}
+			if (JsonElementReader.TryGetProperty(track, "artists", out var artists) && artists.ValueKind == JsonValueKind.Array)
+			{
+				post.TrackArtistName = string.Join(", ", artists.EnumerateArray()
+					.Select(artist => JsonElementReader.GetString(artist, "name", "artistName"))
+					.Where(name => !string.IsNullOrWhiteSpace(name)));
+			}
+		}
+
 		var commentsElement = GetJsonArray(element, "comments", "$values");
 		if (commentsElement is not null)
 		{
@@ -56,6 +99,14 @@ internal static class PostFeedMapper
 		}
 
 		return post;
+	}
+
+	private static string? ReadMusicName(JsonElement element, string property, params string[] names)
+	{
+		return JsonElementReader.TryGetProperty(element, property, out var music)
+			&& music.ValueKind == JsonValueKind.Object
+			? JsonElementReader.GetString(music, names)
+			: null;
 	}
 
 	public static List<CommentItem> ReadCommentList(JsonElement root)

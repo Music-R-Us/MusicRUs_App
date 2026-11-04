@@ -408,6 +408,8 @@
 		formMessage = string.Empty;
 
 		profileModel.FavoriteGenre = draftFavoriteGenre.Trim();
+		// Save the selected search result even when Add favorite was not clicked.
+		AddFavoriteArtist();
 		var profile = profileModel.ToForumProfile();
 		profile.Genres = genres.Where(genre => profileModel.Tags.Contains(genre.Name, StringComparer.OrdinalIgnoreCase)).ToList();
 		var saved = await AuthSession.SaveForumProfileAsync(profile);
@@ -416,7 +418,7 @@
 
 		if (!saved)
 		{
-			formMessage = "Could not save your profile. Check the details and try again.";
+			formMessage = "Could not confirm that all profile changes were saved. Your edits are still here. Check the API response and try again.";
 			return;
 		}
 		
@@ -545,11 +547,18 @@
 		}
 
 		profileModel.FavoriteArtists.Add(artistResult);
+		artistResult = null;
+		artistSearch = string.Empty;
 	}
 
 	private void RemoveFavoriteArtist(int artistId)
 	{
 		profileModel.FavoriteArtists.RemoveAll(artist => artist.Id == artistId);
+		if (artistResult?.Id == artistId)
+		{
+			artistResult = null;
+			artistSearch = string.Empty;
+		}
 	}
 
 	private async Task OnAlbumSearchInputAsync(ChangeEventArgs args)

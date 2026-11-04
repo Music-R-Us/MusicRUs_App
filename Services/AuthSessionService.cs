@@ -224,6 +224,12 @@ public sealed class AuthSessionService
 		return await musicCatalog.SearchAlbumsAsync(query, CurrentUser, cancellationToken);
 	}
 
+	public async Task<List<MusicTrack>> GetAlbumTracksAsync(int albumId, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await musicCatalog.GetAlbumTracksAsync(albumId, CurrentUser, cancellationToken);
+	}
+
 	private static bool IsPrerenderInteropException(InvalidOperationException exception)
 	{
 		return exception.Message.Contains("JavaScript interop calls cannot be issued at this time", StringComparison.Ordinal);

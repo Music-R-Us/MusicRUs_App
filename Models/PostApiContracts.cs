@@ -32,6 +32,8 @@ public sealed class CreateForumPostRequest
 	public int? AlbumId { get; set; }
 
 	public int? ArtistId { get; set; }
+
+	public List<int> GenreIds { get; set; } = [];
 }
 
 public sealed class CreatePostTagRequest
@@ -162,6 +164,8 @@ public sealed class MusicArtist
 
 public sealed class MusicAlbum
 {
+	public List<MusicTrack> Tracks { get; set; } = [];
+
 	public int Id { get; set; }
 
 	public string SpotifyId { get; set; } = string.Empty;
@@ -184,7 +188,7 @@ public sealed class MusicAlbum
 	// Convenience helpers populated from Artists list
 	public int ArtistId => Artists.FirstOrDefault()?.ArtistId ?? 0;
 
-	public string ArtistName => string.Join(", ", Artists.Select(a => a.ArtistName).Where(n => !string.IsNullOrWhiteSpace(n)));
+	public string ArtistName => string.Join(", ", Artists.Select(a => string.IsNullOrWhiteSpace(a.ArtistName) ? a.Name : a.ArtistName).Where(n => !string.IsNullOrWhiteSpace(n)));
 }
 public sealed class GenreOption
 {
@@ -194,6 +198,8 @@ public sealed class GenreOption
 }
 public sealed class AlbumArtistInfo
 {
+	public string Name { get; set; } = string.Empty;
+
 	public int ArtistId { get; set; }
 
 	public string ArtistName { get; set; } = string.Empty;

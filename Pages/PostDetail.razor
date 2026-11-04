@@ -5,6 +5,7 @@
 @inject MusicRUs.Services.PostFeedService PostFeed
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject MusicRUs.Services.ToastService ToastService
+@inject MusicRUs.Services.MusicCatalogService MusicCatalog
 @inject NavigationManager Navigation
 
 <PageTitle>@(Post?.Title ?? "Post")</PageTitle>
@@ -55,9 +56,52 @@ else
 				</div>
 				@if (HasMusicSelection(Post))
 				{
-					<div class="grid gap-1 border-t border-granite-800 pt-4 text-sm text-porcelain-50/70 sm:grid-cols-2">
-						<p><span class="block text-xs uppercase tracking-[0.24em] text-pine-teal-300">Artist</span>@Post.Artist</p>
-						<p><span class="block text-xs uppercase tracking-[0.24em] text-pine-teal-300">Album</span>@Post.Album</p>
+					<div class="grid gap-6 border-t border-granite-800 pt-4 sm:grid-cols-2">
+						@if(!string.IsNullOrWhiteSpace(Post.Artist))
+						{
+							<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+								<h2 class="text-xl font-semibold text-porcelain-50">Artist</h2>
+								<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
+									@if (!string.IsNullOrWhiteSpace(Post.ArtistImageUrl))
+									{
+										<img src="@Post.ArtistImageUrl" alt="" loading="lazy" class="h-14 w-14 shrink-0 rounded-full object-cover" />
+									}
+									<p class="font-semibold text-porcelain-50">@Post.Artist</p>
+								</div>
+							</div>
+						}
+						@if (!string.IsNullOrWhiteSpace(Post.Album))
+						{
+							<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+								<h2 class="text-xl font-semibold text-porcelain-50">Album</h2>
+								<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
+									@if (!string.IsNullOrWhiteSpace(Post.AlbumImageUrl))
+									{
+										<img src="@Post.AlbumImageUrl" alt="" loading="lazy" class="h-14 w-14 shrink-0 rounded-lg object-cover" />
+									}
+									<div>
+										<p class="font-semibold text-porcelain-50">@Post.Album</p>
+										<p class="text-sm text-porcelain-50/70">@AlbumArtistName</p>
+									</div>
+								</div>
+							</div>
+						}
+						@if (!string.IsNullOrWhiteSpace(Post.Song))
+						{
+							<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+								<h2 class="text-xl font-semibold text-porcelain-50">Track</h2>
+								<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
+									@if (!string.IsNullOrWhiteSpace(Post.TrackImageUrl))
+									{
+										<img src="@Post.TrackImageUrl" alt="" loading="lazy" class="h-14 w-14 shrink-0 rounded-lg object-cover" />
+									}
+									<div>
+										<p class="font-semibold text-porcelain-50">@Post.Song</p>
+										<p class="text-sm text-porcelain-50/70">@Post.TrackArtistName</p>
+									</div>
+								</div>
+							</div>
+						}
 					</div>
 				}
 			</div>
@@ -146,12 +190,14 @@ else
 	private Dictionary<int, MusicRUs.Models.UserSession> CommentUsers = [];
 	private MusicRUs.Models.ForumProfile? PostAuthorProfile;
 	private MusicRUs.Models.UserSession? PostAuthorUser;
+	private string AlbumArtistName = string.Empty;
 	private const int CommentsPageSize = 10;
 
 	protected override async Task OnParametersSetAsync()
 	{
 		await AuthSession.InitializeAsync();
 		Post = await PostFeed.GetPostAsync(PostId);
+		await LoadMusicDetailsAsync();
 		PostAuthorProfile = Post?.UserId > 0
 			? await AuthSession.GetForumProfileAsync(Post.UserId)
 			: null;
@@ -159,6 +205,45 @@ else
 			? await AuthSession.GetUserAsync(Post.UserId)
 			: null;
 		await LoadCommentsAsync(1);
+	}
+
+	private async Task LoadMusicDetailsAsync()
+	{
+		AlbumArtistName = string.Empty;
+		var post = Post;
+		if (post is null) return;
+
+		if (post.ArtistId is > 0)
+		{
+			var artist = await MusicCatalog.GetArtistAsync(post.ArtistId.Value, AuthSession.CurrentUser);
+			if (artist is not null)
+			{
+				post.Artist = artist.Name;
+				post.ArtistImageUrl = artist.ImageUrl;
+			}
+		}
+		if (post.AlbumId is > 0)
+		{
+			var album = await MusicCatalog.GetAlbumByIdAsync(post.AlbumId.Value, AuthSession.CurrentUser);
+			if (album is not null)
+			{
+				if (string.IsNullOrWhiteSpace(post.Album)) post.Album = album.Title;
+				if (string.IsNullOrWhiteSpace(post.AlbumImageUrl)) post.AlbumImageUrl = album.ImageUrl;
+				AlbumArtistName = album.ArtistName;
+			}
+		}
+		if (string.IsNullOrWhiteSpace(AlbumArtistName)) AlbumArtistName = post.Artist;
+		if (post.TrackAlbumId is > 0)
+		{
+			var album = await MusicCatalog.GetAlbumByIdAsync(post.TrackAlbumId.Value, AuthSession.CurrentUser);
+			if (album is not null)
+			{
+				if (string.IsNullOrWhiteSpace(post.TrackImageUrl)) post.TrackImageUrl = album.ImageUrl;
+				if (string.IsNullOrWhiteSpace(post.TrackArtistName)) post.TrackArtistName = album.ArtistName;
+			}
+		}
+		if (string.IsNullOrWhiteSpace(post.TrackImageUrl)) post.TrackImageUrl = post.AlbumImageUrl;
+		if (string.IsNullOrWhiteSpace(post.TrackArtistName)) post.TrackArtistName = AlbumArtistName;
 	}
 
 	private void GoBack() => Navigation.NavigateTo("/posts");
@@ -253,7 +338,8 @@ else
 	private static bool HasMusicSelection(MusicRUs.Models.PostItem post)
 	{
 		return !string.IsNullOrWhiteSpace(post.Artist)
-			|| !string.IsNullOrWhiteSpace(post.Album);
+			|| !string.IsNullOrWhiteSpace(post.Album)
+			|| !string.IsNullOrWhiteSpace(post.Song);
 	}
 
 	private string PostAuthorDisplayName => !string.IsNullOrWhiteSpace(PostAuthorProfile?.DisplayName)

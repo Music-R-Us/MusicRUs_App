@@ -117,6 +117,17 @@ public sealed class ForumProfileService
 		}
 
 		var savedProfile = await GetForumProfileAsync(profile.UserId, currentUser, cancellationToken);
+		if (savedProfile is null)
+		{
+			return false;
+		}
+		var expectedArtists = profile.FavoriteArtists.Select(artist => artist.Id).Where(id => id > 0).ToHashSet();
+		var savedArtists = savedProfile.FavoriteArtists.Select(artist => artist.Id).Where(id => id > 0).ToHashSet();
+		if (!expectedArtists.SetEquals(savedArtists))
+		{
+			Console.Error.WriteLine("Profile update returned success, but reloading the profile did not return the requested favorite artist IDs.");
+			return false;
+		}
 		if (savedProfile is not null)
 		{
 			profile.Id = savedProfile.Id;

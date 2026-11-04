@@ -107,6 +107,7 @@
 							<div class="grid gap-2 text-sm text-porcelain-50/70 lg:min-w-64 lg:justify-items-end">
 								<p class="font-medium text-porcelain-50">@post.Artist</p>
 								<p>@post.Album</p>
+								@if (!string.IsNullOrWhiteSpace(post.Song)) { <p>@post.Song</p> }
 							</div>
 						}
 					</div>
@@ -155,11 +156,15 @@
 						<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
 							<span>Title</span>
 							<InputText @bind-Value="Draft.Title" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+							<span class="text-xs text-porcelain-50/60">At least 8 characters.</span>
+							<ValidationMessage For="@(() => Draft.Title)" class="text-sm text-red-100" />
 						</label>
 
 						<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
 							<span>What do you want to write?</span>
 							<InputTextArea @bind-Value="Draft.Body" rows="8" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+							<span class="text-xs text-porcelain-50/60">At least 8 characters.</span>
+							<ValidationMessage For="@(() => Draft.Body)" class="text-sm text-red-100" />
 						</label>
 
 						<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
@@ -193,20 +198,18 @@
 					<div class="grid gap-4">
 						<div class="grid gap-3 rounded-3xl border border-granite-800 bg-coffee-bean-900/40 p-4 text-sm text-porcelain-50/80">
 							<span class="font-medium text-porcelain-50">Music selection</span>
-							<InputRadioGroup @bind-Value="Draft.RequiresMusicSelection" class="grid gap-3">
-								<label class="flex items-center gap-3">
-									<InputRadio Value="true" />
-									<span>Require artist and album</span>
-								</label>
-								<label class="flex items-center gap-3">
-									<InputRadio Value="false" />
-									<span>Post without music selection</span>
-								</label>
+							<InputRadioGroup @bind-Value="Draft.MusicType" @bind-Value:after="OnMusicTypeChanged" class="flex flex-wrap gap-4">
+								@foreach (var type in Enum.GetValues<MusicRUs.Models.MusicLinkType>())
+								{
+									<label class="flex items-center gap-2"><InputRadio Value="type" /><span>@(type == MusicRUs.Models.MusicLinkType.None ? "No music" : type.ToString())</span></label>
+								}
 							</InputRadioGroup>
 						</div>
 
 						@if (Draft.RequiresMusicSelection)
 						{
+							@if (Draft.MusicType == MusicRUs.Models.MusicLinkType.Artist)
+							{
 							<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
 								<span>Artist</span>
 								<input value="@Draft.Selection.Artist" @oninput="OnArtistInputAsync" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
@@ -231,14 +234,13 @@
 								</div>
 							}
 
+							}
+							@if (Draft.MusicType is MusicRUs.Models.MusicLinkType.Album or MusicRUs.Models.MusicLinkType.Track)
+							{
 							<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
 								<span>Album</span>
 								<input value="@Draft.Selection.Album" @oninput="OnAlbumInputAsync" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
 							</label>
-							@if (Draft.Selection.ArtistId <= 0 && !string.IsNullOrWhiteSpace(Draft.Selection.Album))
-							{
-								<p class="text-sm text-porcelain-50/60">Select an artist first to search their albums.</p>
-							}
 							@if (isSearchingAlbums)
 							{
 								<p class="text-sm text-porcelain-50/60">Searching...</p>
@@ -255,6 +257,7 @@
 											}
 											<span>
 												<span class="block font-semibold">@album.Title</span>
+												<span class="block text-xs text-porcelain-50/60">@album.ArtistName</span>
 												@if (!string.IsNullOrWhiteSpace(album.ReleaseDate))
 												{
 													<span class="text-xs text-porcelain-50/60">@album.ReleaseDate</span>
@@ -265,6 +268,22 @@
 								</div>
 							}
 
+							}
+							@if (Draft.MusicType == MusicRUs.Models.MusicLinkType.Track && Draft.Selection.AlbumId > 0)
+							{
+								<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
+									<span>Track</span>
+									<InputSelect @bind-Value="Draft.Selection.TrackId" @bind-Value:after="OnTrackSelected" class="rounded-2xl border border-granite-700 bg-coffee-bean-900 px-4 py-3 text-porcelain-50">
+										<option value="0">Select a track</option>
+										@foreach (var track in trackResults)
+										{
+											<option value="@track.Id">@track.Title</option>
+										}
+									</InputSelect>
+								</label>
+								@if (isLoadingTracks) { <p class="text-sm text-porcelain-50/60">Loading tracks...</p> }
+								else if (trackResults.Count == 0) { <p class="text-sm text-porcelain-50/60">No tracks available for this album. Choose another album.</p> }
+							}
 						}
 					</div>
 				</div>
@@ -289,6 +308,9 @@
 	private IReadOnlyList<MusicRUs.Models.PostItem> FeedPosts = [];
 	private List<MusicRUs.Models.MusicArtist> artistResults = [];
 	private List<MusicRUs.Models.MusicAlbum> albumResults = [];
+	private List<MusicRUs.Models.MusicTrack> trackResults = [];
+	private bool isLoadingTracks;
+	private CancellationTokenSource? trackLoad;
 	private List<MusicRUs.Models.GenreOption> genreOptions = [];
 	private List<string> selectedTags = [];
 	private List<string> selectedFeedTags = [];
@@ -358,6 +380,36 @@
 
 	private void CloseComposer() => IsComposerOpen = false;
 
+	private void ResetTracks()
+	{
+		trackLoad?.Cancel();
+		trackLoad = null;
+		isLoadingTracks = false;
+		trackResults = [];
+		Draft.Selection.TrackId = 0;
+		Draft.Selection.Track = string.Empty;
+	}
+
+	private void OnMusicTypeChanged()
+	{
+		CancelArtistSearchDebounce();
+		CancelAlbumSearchDebounce();
+		ResetTracks();
+		Draft.RequiresMusicSelection = Draft.MusicType != MusicRUs.Models.MusicLinkType.None;
+		Draft.Selection = new();
+		artistResults = [];
+		albumResults = [];
+		isSearchingArtists = false;
+		isSearchingAlbums = false;
+		ComposerError = string.Empty;
+	}
+
+	private void OnTrackSelected()
+	{
+		Draft.Selection.Track = trackResults.FirstOrDefault(track => track.Id == Draft.Selection.TrackId)?.Title ?? string.Empty;
+		ComposerError = string.Empty;
+	}
+
 	private void OnTagsInput(ChangeEventArgs args)
 	{
 		tagSearch = args.Value?.ToString() ?? string.Empty;
@@ -375,6 +427,7 @@
 
 	private async Task OnArtistInputAsync(ChangeEventArgs args)
 	{
+		ResetTracks();
 		var nextArtist = args.Value?.ToString() ?? string.Empty;
 		if (!string.Equals(Draft.Selection.Artist, nextArtist, StringComparison.Ordinal))
 		{
@@ -391,6 +444,7 @@
 
 	private async Task OnAlbumInputAsync(ChangeEventArgs args)
 	{
+		ResetTracks();
 		Draft.Selection.Album = args.Value?.ToString() ?? string.Empty;
 		Draft.Selection.AlbumId = 0;
 		albumResults = [];
@@ -399,6 +453,9 @@
 
 	private void SelectArtistAsync(MusicRUs.Models.MusicArtist artist)
 	{
+		CancelArtistSearchDebounce();
+		CancelAlbumSearchDebounce();
+		ResetTracks();
 		Draft.Selection.Artist = artist.Name;
 		Draft.Selection.ArtistId = artist.Id;
 		Draft.Selection.Album = string.Empty;
@@ -408,12 +465,36 @@
 		ComposerError = string.Empty;
 	}
 
-	private void SelectAlbumAsync(MusicRUs.Models.MusicAlbum album)
+	private async Task SelectAlbumAsync(MusicRUs.Models.MusicAlbum album)
 	{
+		CancelAlbumSearchDebounce();
+		ResetTracks();
 		Draft.Selection.Album = album.Title;
 		Draft.Selection.AlbumId = album.Id;
 		albumResults = [];
 		ComposerError = string.Empty;
+		if (Draft.MusicType != MusicRUs.Models.MusicLinkType.Track) return;
+		using var load = new CancellationTokenSource();
+		trackLoad = load;
+		isLoadingTracks = true;
+		try
+		{
+			var tracks = await AuthSession.GetAlbumTracksAsync(album.Id, load.Token);
+			if (ReferenceEquals(trackLoad, load)) trackResults = tracks;
+		}
+		catch (OperationCanceledException) { }
+		catch (HttpRequestException)
+		{
+			if (ReferenceEquals(trackLoad, load)) ComposerError = "Could not load tracks. Select the album again to retry.";
+		}
+		finally
+		{
+			if (ReferenceEquals(trackLoad, load))
+			{
+				trackLoad = null;
+				isLoadingTracks = false;
+			}
+		}
 	}
 
 	private void AddTag(string tag)
@@ -475,9 +556,17 @@
 		}
 
 		ComposerError = string.Empty;
-		if (Draft.RequiresMusicSelection && (Draft.Selection.ArtistId <= 0 || Draft.Selection.AlbumId <= 0))
+		var hasSelection = Draft.MusicType switch
 		{
-			ComposerError = "Select a matching artist and album, or switch music selection off.";
+			MusicRUs.Models.MusicLinkType.None => true,
+			MusicRUs.Models.MusicLinkType.Artist => Draft.Selection.ArtistId > 0,
+			MusicRUs.Models.MusicLinkType.Album => Draft.Selection.AlbumId > 0,
+			MusicRUs.Models.MusicLinkType.Track => Draft.Selection.TrackId > 0,
+			_ => false
+		};
+		if (!hasSelection)
+		{
+			ComposerError = $"Select a {Draft.MusicType.ToString().ToLowerInvariant()} from the available results, or choose No music.";
 			return;
 		}
 
@@ -503,9 +592,12 @@
 		Draft.Title = string.Empty;
 		Draft.Body = string.Empty;
 		Draft.TagsText = string.Empty;
+		Draft.GenreIds = [];
 		tagSearch = string.Empty;
 		selectedTags = [];
 		Draft.RequiresMusicSelection = true;
+		Draft.MusicType = MusicRUs.Models.MusicLinkType.Album;
+		ResetTracks();
 		Draft.Selection = new MusicRUs.Models.MusicSelection();
 		await LoadFeedAsync();
 		IsComposerOpen = false;
@@ -557,7 +649,7 @@
 	{
 		CancelAlbumSearchDebounce();
 
-		if (Draft.Selection.ArtistId <= 0 || Draft.Selection.Album.Trim().Length < 2)
+		if (Draft.Selection.Album.Trim().Length < 2)
 		{
 			isSearchingAlbums = false;
 			return;
@@ -572,7 +664,7 @@
 		{
 			await Task.Delay(TimeSpan.FromSeconds(2), debounce.Token);
 			var albumSearch = Draft.Selection.Album.Trim();
-			albumResults = (await AuthSession.GetAlbumsByArtistAsync(Draft.Selection.ArtistId, debounce.Token))
+			albumResults = (await AuthSession.SearchAlbumsAsync(albumSearch, debounce.Token))
 				.Where(album => !string.IsNullOrWhiteSpace(album.Title))
 				.Where(album => album.Title.Contains(albumSearch, StringComparison.OrdinalIgnoreCase))
 				.Take(5)
@@ -616,6 +708,11 @@
 	private void SyncDraftTags()
 	{
 		Draft.TagsText = string.Join(", ", selectedTags.Distinct(StringComparer.OrdinalIgnoreCase));
+		Draft.GenreIds = genreOptions
+			.Where(genre => selectedTags.Contains(genre.Name, StringComparer.OrdinalIgnoreCase))
+			.Select(genre => genre.Id)
+			.Distinct()
+			.ToList();
 	}
 
 	private bool MatchesPostSearch(MusicRUs.Models.PostItem post)
@@ -649,7 +746,8 @@
 	private static bool HasMusicSelection(MusicRUs.Models.PostItem post)
 	{
 		return !string.IsNullOrWhiteSpace(post.Artist)
-			|| !string.IsNullOrWhiteSpace(post.Album);
+			|| !string.IsNullOrWhiteSpace(post.Album)
+			|| !string.IsNullOrWhiteSpace(post.Song);
 	}
 
 	private bool IsHighlightedOwnPost(MusicRUs.Models.PostItem post)
@@ -695,6 +793,7 @@
 
 	public void Dispose()
 	{
+		ResetTracks();
 		CancelArtistSearchDebounce();
 		CancelAlbumSearchDebounce();
 	}
