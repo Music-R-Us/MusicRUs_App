@@ -130,7 +130,7 @@ public sealed class PostFeedService
 				UserId = user.UserId,
 				Content = request.Body
 			};
-			if (await TryPostToApiAsync("api/Comments", forumRequest, user.AccessToken, cancellationToken))
+			if (await TryPostToApiAsync("api/Comment", forumRequest, user.AccessToken, cancellationToken))
 			{
 				AddLocalComment(post, request.Author, request.Body, user);
 				return;
@@ -177,9 +177,9 @@ public sealed class PostFeedService
 		{
 			var urls = new[]
 			{
-				$"api/Comments/{comment.CommentId}",
-				$"api/Comments/{post.PostId}/{comment.CommentId}",
-				$"api/Comments/post/{post.PostId}/comment/{comment.CommentId}"
+				$"api/Comment/{comment.CommentId}",
+				$"api/Comment/{post.PostId}/{comment.CommentId}",
+				$"api/Comment/post/{post.PostId}/comment/{comment.CommentId}"
 			};
 
 			if (await TryDeleteFromAnyApiAsync(urls, user.AccessToken, cancellationToken))
@@ -441,9 +441,8 @@ public sealed class PostFeedService
 	{
 		var urls = new[]
 		{
-			$"api/Comments/post/{postId}",
-			$"api/Comments?postId={postId}",
-			$"api/Comments/{postId}"
+			$"api/Comment/forumpost/{postId}",
+			$"api/Comment/{postId}"
 		};
 
 		foreach (var url in urls)

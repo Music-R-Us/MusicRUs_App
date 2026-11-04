@@ -25,7 +25,7 @@
 				}
 				<div class="grid gap-1">
 					<p class="text-sm font-semibold uppercase tracking-[0.3em] text-porcelain-50/70">Profile</p>
-					<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">@DisplayUsername</h1>
+					<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl font-outline-1">@DisplayUsername</h1>
 				</div>
 			</div>
 
@@ -44,17 +44,16 @@
 			}
 		</div>
 
-		<div class="grid gap-2">
-			<p class="max-w-2xl text-base leading-7 text-porcelain-50/80 sm:text-lg">
-				@Bio
-			</p>
-		</div>
-
 		@if (CurrentProfile is not null)
 		{
 			<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
 				<div>
 					<p class="text-sm font-semibold uppercase tracking-[0.25em] text-granite-300">Profile Information</p>
+				</div>
+				<div class="grid gap-2">
+					<p class="max-w-2xl text-base leading-7 text-porcelain-50/80 sm:text-lg">
+						@Bio
+					</p>
 				</div>
 				<div class="grid gap-2 text-sm sm:grid-cols-2">
 					<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">

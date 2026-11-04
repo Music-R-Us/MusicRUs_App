@@ -19,7 +19,7 @@ public sealed class UserLookupService
 			return null;
 		}
 
-		var content = await apiClient.GetStringAsync($"api/Users/{userId}", currentUser?.AccessToken, cancellationToken);
+		var content = await apiClient.GetStringAsync($"api/User/{userId}", currentUser?.AccessToken, cancellationToken);
 		if (string.IsNullOrWhiteSpace(content))
 		{
 			return null;

@@ -27,7 +27,11 @@ else
 				<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">@Post.Title</h1>
 				<div class="flex flex-wrap items-center gap-2 text-sm text-porcelain-50/70">
 					<span>•</span>
-					<a href="@PostAuthorProfileUrl" class="font-semibold text-pine-teal-200 underline-offset-4 transition hover:text-pine-teal-100 hover:underline">@PostAuthorDisplayName</a>
+					<a href="@PostAuthorProfileUrl" class="inline-flex items-center gap-2 font-semibold text-pine-teal-200 underline-offset-4 transition hover:text-pine-teal-100 hover:underline">
+
+					<img src="@PostAuthorAvatarUrl" alt="@PostAuthorDisplayName avatar" class="h-9 w-9 shrink-0 rounded-full bg-pine-teal-300 object-cover" />
+					<span>@PostAuthorDisplayName</span>
+					</a>
 					<span>•</span>
 					<span>@DisplayTime.Format(Post.CreatedAtUtc)</span>
 					@if (IsOwnPost)
@@ -255,6 +259,10 @@ else
 	private string PostAuthorDisplayName => !string.IsNullOrWhiteSpace(PostAuthorProfile?.DisplayName)
 		? PostAuthorProfile.DisplayName
 		: !string.IsNullOrWhiteSpace(PostAuthorUser?.Username) ? PostAuthorUser.Username : $"User {Post?.UserId ?? 0}";
+
+	private string PostAuthorAvatarUrl => !string.IsNullOrWhiteSpace(PostAuthorProfile?.AvatarUrl)
+		? PostAuthorProfile.AvatarUrl
+		: PostAuthorUser?.AvatarUrl ?? string.Empty;
 
 	private string PostAuthorProfileUrl => Post?.UserId > 0
 		? $"/profile/{Post.UserId}"
