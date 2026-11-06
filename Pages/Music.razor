@@ -1,0 +1,202 @@
+@page "/music"
+
+@layout MainLayout
+
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject NavigationManager Navigation
+
+<PageTitle>Music – MusicRUs</PageTitle>
+
+<section class="w-full">
+	<div class="relative m-4 grid gap-8 overflow-hidden rounded-3xl border border-fiery-terracotta-800 bg-linear-to-br from-fiery-terracotta-900/95 to-fiery-terracotta-700/85 p-8 text-porcelain-50 shadow-xl lg:p-12">
+
+		<div class="grid gap-3">
+			<p class="text-xl font-semibold text-pine-teal-300">Browse</p>
+			<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">Music</h1>
+			<p class="max-w-2xl text-base leading-7 text-porcelain-50/80">
+				Search for artists or albums.
+			</p>
+		</div>
+
+		<div class="grid gap-4 rounded-2xl border border-granite-800/80 gradient-surface p-6 backdrop-blur">
+			<div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+				<input
+					class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 placeholder-porcelain-50/70 outline-none transition focus:border-fiery-terracotta-300"
+					placeholder="Search artist or album..."
+					@bind="searchQuery"
+					@bind:event="oninput"
+					@onkeydown="OnSearchKeyDown" />
+				<button
+					type="button"
+					@onclick="RunSearchAsync"
+					disabled="@isSearching"
+					class="rounded-2xl border-2 border-porcelain-50/80 bg-pine-teal-700 px-6 py-3 text-sm font-bold text-porcelain-50 shadow-sm shadow-black/20 transition hover:border-porcelain-50 hover:bg-pine-teal-600 disabled:opacity-50">
+					@(isSearching ? "Searching..." : "Search")
+				</button>
+			</div>
+
+			<div class="flex gap-2">
+				<button type="button" @onclick='() => SetMode("both")' class="@TabClass("both")">All</button>
+				<button type="button" @onclick='() => SetMode("artist")' class="@TabClass("artist")">Artists</button>
+				<button type="button" @onclick='() => SetMode("album")' class="@TabClass("album")">Albums</button>
+			</div>
+		</div>
+
+		@if (!string.IsNullOrWhiteSpace(errorMessage))
+		{
+			<div class="rounded-2xl border border-fiery-terracotta-300/50 bg-fiery-terracotta-950/80 p-4 text-sm font-medium text-porcelain-50">
+				@errorMessage
+			</div>
+		}
+
+		@if (hasSearched && artistResults.Count == 0 && albumResults.Count == 0)
+		{
+			<div class="rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-6 text-center text-porcelain-50/80">
+				No results for "@lastQuery". Try a different name.
+			</div>
+		}
+
+		@if (artistResults.Count > 0 && (searchMode == "both" || searchMode == "artist"))
+		{
+			<div class="grid gap-4">
+				<h2 class="text-lg font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Artists</h2>
+				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					@foreach (var artist in artistResults)
+					{
+						<a href="/music/artist/@artist.Id" class="group flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 transition hover:border-pine-teal-400/40 hover:bg-coffee-bean-900/60">
+							@if (!string.IsNullOrWhiteSpace(artist.ImageUrl))
+							{
+								<img src="@artist.ImageUrl" alt="@artist.Name" class="h-14 w-14 rounded-xl object-cover" />
+							}
+							else
+							{
+								<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-pine-teal-300 text-xl font-bold text-coffee-bean-950">
+									@(artist.Name.Length > 0 ? artist.Name[0].ToString().ToUpperInvariant() : "?")
+								</div>
+							}
+							<div class="grid gap-0.5 min-w-0">
+								<p class="truncate text-base font-semibold text-porcelain-50 transition group-hover:text-pine-teal-300">@artist.Name</p>
+								<p class="text-sm text-porcelain-50/75">View discography →</p>
+							</div>
+						</a>
+					}
+				</div>
+			</div>
+		}
+
+		@if (albumResults.Count > 0 && (searchMode == "both" || searchMode == "album"))
+		{
+			<div class="grid gap-4">
+				<h2 class="text-lg font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Albums</h2>
+				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					@foreach (var album in albumResults)
+					{
+						<a href="/music/artist/@album.ArtistId" class="group flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 transition hover:border-pine-teal-400/40 hover:bg-coffee-bean-900/60">
+							@if (!string.IsNullOrWhiteSpace(album.ImageUrl))
+							{
+								<img src="@album.ImageUrl" alt="@album.Title" class="h-14 w-14 rounded-lg object-cover" />
+							}
+							else
+							{
+								<div class="flex h-14 w-14 items-center justify-center rounded-lg bg-fiery-terracotta-800/60 text-xs text-porcelain-50/80">
+									Album
+								</div>
+							}
+							<div class="grid gap-0.5 min-w-0">
+								<p class="truncate font-semibold text-porcelain-50 group-hover:text-pine-teal-300 transition">@album.Title</p>
+								@if (!string.IsNullOrWhiteSpace(album.ArtistName))
+								{
+									<p class="truncate text-sm text-porcelain-50/80">@album.ArtistName</p>
+								}
+								@if (!string.IsNullOrWhiteSpace(album.ReleaseDate))
+								{
+									<p class="text-xs text-porcelain-50/70">@album.ReleaseDate</p>
+								}
+							</div>
+						</a>
+					}
+				</div>
+			</div>
+		}
+
+	</div>
+</section>
+
+@code {
+	private string searchQuery = string.Empty;
+	private string lastQuery = string.Empty;
+	private string searchMode = "both";
+	private bool isSearching;
+	private bool hasSearched;
+	private string errorMessage = string.Empty;
+
+	private List<MusicArtist> artistResults = [];
+	private List<MusicAlbum> albumResults = [];
+
+	private async Task RunSearchAsync()
+	{
+		var query = searchQuery.Trim();
+		if (string.IsNullOrWhiteSpace(query))
+		{
+			return;
+		}
+
+		isSearching = true;
+		errorMessage = string.Empty;
+		artistResults = [];
+		albumResults = [];
+		lastQuery = query;
+
+		var tasks = new List<Task>();
+
+		Task<List<MusicArtist>>? artistTask = null;
+		Task<List<MusicAlbum>>? albumTask = null;
+
+		if (searchMode == "both" || searchMode == "artist")
+		{
+			artistTask = AuthSession.SearchArtistsAsync(query);
+			tasks.Add(artistTask);
+		}
+
+		if (searchMode == "both" || searchMode == "album")
+		{
+			albumTask = AuthSession.SearchAlbumsAsync(query);
+			tasks.Add(albumTask);
+		}
+
+		await Task.WhenAll(tasks);
+
+		if (artistTask is not null)
+		{
+			artistResults = await artistTask;
+		}
+
+		if (albumTask is not null)
+		{
+			albumResults = await albumTask;
+		}
+
+		hasSearched = true;
+		isSearching = false;
+	}
+
+	private async Task OnSearchKeyDown(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter")
+		{
+			await RunSearchAsync();
+		}
+	}
+
+	private void SetMode(string mode)
+	{
+		searchMode = mode;
+		artistResults = [];
+		albumResults = [];
+		hasSearched = false;
+	}
+
+	private string TabClass(string mode) => mode == searchMode
+		? "rounded-full border-2 border-pine-teal-300 bg-pine-teal-400/10 px-4 py-1.5 text-sm font-semibold text-pine-teal-300"
+		: "rounded-full border border-granite-700 bg-granite-900/60 px-4 py-1.5 text-sm font-semibold text-porcelain-50/80 transition hover:text-porcelain-50";
+}

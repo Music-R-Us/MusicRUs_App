@@ -36,8 +36,8 @@
                             </span>
                         }
                         <span class="grid text-left leading-tight">
-                            <span class="text-[0.65rem] font-medium uppercase tracking-[0.2em]">Profile</span>
-                            <span class="text-sm font-semibold">@HeaderDisplayName</span>
+                            <span class="text-x1 font-semibold text-porcelain-50">Profile</span>
+                            <span class="text-x1 font-semibold">@HeaderDisplayName</span>
                         </span>
                     </a>
                 }
@@ -89,7 +89,7 @@
     protected override void OnInitialized()
     {
         AuthSession.Changed += OnAuthSessionChanged;
-        ProfileColors.Changed += OnAuthSessionChanged;
+        ProfileColors.Changed += OnProfileColorChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -119,6 +119,18 @@
         });
     }
 
+    private void OnProfileColorChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (AuthSession.CurrentUser is { UserId: > 0 } user)
+            {
+                headerColor = await ProfileColors.GetAsync(user.UserId);
+            }
+            StateHasChanged();
+        });
+    }
+
     private async Task ToggleThemeAsync()
     {
         var requestedTheme = isLightMode ? "dark" : "light";
@@ -128,6 +140,7 @@
             requestedTheme);
 
         isLightMode = appliedTheme == "light";
+        ToastService.Show($"Switched to {(isLightMode ? "light" : "dark")} mode.");
     }
 
     private async Task LoadHeaderProfileAsync()
@@ -186,6 +199,6 @@
     public void Dispose()
     {
         AuthSession.Changed -= OnAuthSessionChanged;
-        ProfileColors.Changed -= OnAuthSessionChanged;
+        ProfileColors.Changed -= OnProfileColorChanged;
     }
 }

@@ -186,7 +186,8 @@ public sealed class MusicAlbum
 	public List<AlbumArtistInfo> Artists { get; set; } = [];
 
 	// Convenience helpers populated from Artists list
-	public int ArtistId => Artists.FirstOrDefault()?.ArtistId ?? 0;
+	public int ArtistId => Artists.Select(artist => artist.ArtistId > 0 ? artist.ArtistId : artist.Id)
+		.FirstOrDefault(id => id > 0);
 
 	public string ArtistName => string.Join(", ", Artists.Select(a => string.IsNullOrWhiteSpace(a.ArtistName) ? a.Name : a.ArtistName).Where(n => !string.IsNullOrWhiteSpace(n)));
 }
@@ -198,6 +199,8 @@ public sealed class GenreOption
 }
 public sealed class AlbumArtistInfo
 {
+	public int Id { get; set; }
+
 	public string Name { get; set; } = string.Empty;
 
 	public int ArtistId { get; set; }
@@ -318,6 +321,10 @@ public sealed class MusicPagedResult<T>
 
 public sealed class MusicTrack
 {
+	public MusicAlbum? Album { get; set; }
+
+	public List<MusicArtist> Artists { get; set; } = [];
+
 	public int Id { get; set; }
 
 	public string SpotifyId { get; set; } = string.Empty;
@@ -343,8 +350,31 @@ public sealed class MusicTrack
 		: string.Empty;
 }
 
+public enum MediaFormat
+{
+	Vinyl = 0,
+	Cd = 1,
+	Cassette = 2,
+	Digital = 3,
+	Other = 4
+}
+
+public sealed class CreateOwnedMusicCollectionRequest
+{
+	public int UserId { get; set; }
+	public int AlbumId { get; set; }
+	public MediaFormat Format { get; set; }
+}
+
 public sealed class MusicCollectionItem
 {
+	[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<MediaFormat>))]
+	public MediaFormat Format { get; set; }
+
+	public MusicAlbum? Album { get; set; }
+
+	public DateTimeOffset? CreatedAt { get; set; }
+
 	public int Id { get; set; }
 
 	public int UserId { get; set; }

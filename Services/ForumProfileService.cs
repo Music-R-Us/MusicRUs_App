@@ -5,6 +5,7 @@ namespace MusicRUs.Services;
 public sealed class ForumProfileService
 {
 	private readonly BackendApiClient apiClient;
+	private readonly Dictionary<(int UserId, string? Token), (Task<ForumProfile?> Load, DateTimeOffset Expires)> profileReads = [];
 
 	public ForumProfileService(BackendApiClient apiClient)
 	{
@@ -56,13 +57,18 @@ public sealed class ForumProfileService
 			return null;
 		}
 
-		var profileFromApi = await apiClient.GetAsync<ForumProfile>($"api/ForumProfile/user/{userId}", currentUser?.AccessToken, cancellationToken);
-		if (profileFromApi is not null)
+		var key = (userId, currentUser?.AccessToken);
+		if (!profileReads.TryGetValue(key, out var cached) || cached.Expires <= DateTimeOffset.UtcNow)
 		{
-            return profileFromApi;
-        }
-
-		return profileFromApi;
+			cached = (apiClient.GetAsync<ForumProfile>($"api/ForumProfile/user/{userId}", currentUser?.AccessToken, cancellationToken), DateTimeOffset.UtcNow.AddSeconds(10));
+			profileReads[key] = cached;
+		}
+		var profile = await cached.Load;
+		if (profile is null && profileReads.TryGetValue(key, out var latest) && latest.Load == cached.Load)
+		{
+			profileReads.Remove(key);
+		}
+		return profile;
 	}
 
 	public async Task<bool> IsForumProfileSetupCompleteAsync(UserSession user, CancellationToken cancellationToken = default)
@@ -72,7 +78,7 @@ public sealed class ForumProfileService
 			return false;
 		}
 
-		var profileFromApi = await apiClient.GetAsync<ForumProfile>($"api/ForumProfile/user/{user.UserId}", user.AccessToken, cancellationToken);
+		var profileFromApi = await GetForumProfileAsync(user.UserId, user, cancellationToken);
 		return IsConfiguredForumProfile(profileFromApi, user);
 	}
 
@@ -116,6 +122,10 @@ public sealed class ForumProfileService
 			return false;
 		}
 
+		foreach (var key in profileReads.Keys.Where(key => key.UserId == profile.UserId).ToList())
+		{
+			profileReads.Remove(key);
+		}
 		var savedProfile = await GetForumProfileAsync(profile.UserId, currentUser, cancellationToken);
 		if (savedProfile is null)
 		{

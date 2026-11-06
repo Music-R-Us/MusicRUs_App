@@ -76,6 +76,8 @@ public sealed class CommentItem
 
 public sealed class MusicSelection
 {
+	public string AlbumImageUrl { get; set; } = string.Empty;
+
 	public int TrackId { get; set; }
 
 	public string Track { get; set; } = string.Empty;

@@ -10,20 +10,18 @@
 <PageTitle>Posts</PageTitle>
 
 <section class="grid gap-6">
-	<div class="flex flex-col gap-4 rounded-4xl border border-granite-800/80 gradient-surface p-8 backdrop-blur lg:flex-row lg:items-end lg:justify-between">
+	<div class="relative m-4 flex flex-col gap-4 overflow-hidden rounded-3xl border border-fiery-terracotta-800 bg-linear-to-br from-fiery-terracotta-900/95 to-fiery-terracotta-700/85 p-8 shadow-xl lg:flex-row lg:items-end lg:justify-between lg:p-12">
 		<div class="grid gap-2">
-			<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Recent posts</p>
-			<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">Posts</h1>
-			<p class="max-w-2xl text-base leading-7 text-porcelain-50/80">
-				A recent feed that leans into your favorite tags while still surfacing the whole conversation.
+			<p class="text-xl font-semibold text-porcelain-50">Recent posts</p>
+			<h1 class="text-4xl font-semibold text-porcelain-50 sm:text-5xl">Posts</h1>
+			<p class="text-xl  text-porcelain-50">
+				Find posts about the things you enjoy or start a new discussion! 
 			</p>
 		</div>
         @if(AuthSession.CurrentUser is not null)
         {
         <button class="inline-flex items-center justify-center rounded-full bg-pine-teal-400 px-5 py-3 text-sm font-semibold text-coffee-bean-950 transition hover:bg-pine-teal-300"
-			type="button"
-			@onclick="OpenComposer">
-			+ New Post
+			type="button" @onclick="OpenComposer"> + New Post
 		</button>
         }
 
@@ -36,7 +34,7 @@
 				<input value="@postSearch" @oninput="OnPostSearchInput" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
 			</label>
 			<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
-				<span>Search tags</span>
+				<span>Search genres</span>
 				<input value="@feedTagSearch" @oninput="OnFeedTagSearchInput" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
 			</label>
 		</div>
@@ -80,7 +78,7 @@
 			{
 				<div class="rounded-3xl border border-granite-800/70 bg-coffee-bean-950/70 p-6 text-porcelain-50/75">
 					<p class="text-lg font-semibold text-porcelain-50">No matching posts</p>
-					<p class="mt-2 text-sm leading-6">Try another post search or tag.</p>
+					<p class="mt-2 text-sm leading-6">Try another post search or genre.</p>
 				</div>
 			}
 			@foreach (var post in FilteredFeedPosts)
@@ -88,18 +86,18 @@
 				<article class="@GetPostCardClass(post)">
 					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 						<div class="grid gap-3">
-							<div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-pine-teal-300/80">
+							<div class="flex flex-wrap items-center gap-2 text-sm text-porcelain-50/70">
 								@if (IsHighlightedOwnPost(post))
 								{
-									<span class="rounded-full border border-pine-teal-400/30 bg-pine-teal-400/10 px-2 py-1 text-pine-teal-300">Your recent post</span>
+									<span class="rounded-full border border-pine-teal-400/30 bg-pine-teal-400/10 px-2 py-1 text-pine-teal-300">Your post</span>
 								}
-								<a href="@GetAuthorProfileUrl(post)" class="text-pine-teal-200 underline-offset-4 transition hover:text-pine-teal-100 hover:underline">
+								<a href="@GetAuthorProfileUrl(post)" class="text-porcelain-50 underline-offset-4 transition hover:text-porcelain-50 hover:underline">
 									@GetAuthorDisplayName(post)
 								</a>
 							</div>
 
-							<a href="@($"/posts/{post.RouteId}")" class="text-2xl font-semibold tracking-tight text-porcelain-50 transition hover:text-pine-teal-200">@post.Title</a>
-							<p class="max-w-4xl text-sm leading-6 text-porcelain-50/75 sm:text-base">@post.Body</p>
+							<a href="@($"/posts/{post.RouteId}")" class="text-xl font-semibold text-porcelain-50">@post.Title</a>
+							<p class="text-sm text-porcelain-50">@post.Body</p>
 						</div>
 
 						@if (HasMusicSelection(post))
@@ -121,11 +119,11 @@
 						{
 							<button type="button"
 								@onclick="() => DeletePostAsync(post)"
-								class="rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-100 transition hover:border-red-300 hover:bg-red-400/20">
+								class="rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-sm uppercase text-red-100 transition hover:border-red-300 hover:bg-red-400/20">
 								Delete
 							</button>
 						}
-						<span class="ml-auto text-xs uppercase tracking-[0.24em] text-granite-300">@(post.CommentCount > 0 ? post.CommentCount : post.Comments.Count) comments</span>
+						<span class="ml-auto text-sm text-granite-300">@(post.CommentCount > 0 ? post.CommentCount : post.Comments.Count) comments</span>
 					</div>
 				</article>
 			}
@@ -168,7 +166,7 @@
 						</label>
 
 						<label class="grid gap-2 text-sm font-medium text-porcelain-50/80">
-							<span>Search tags</span>
+							<span>Search genres</span>
 							<input value="@tagSearch" @oninput="OnTagsInput" class="rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
 						</label>
 						@if (selectedTags.Count > 0)
@@ -448,6 +446,7 @@
 		Draft.Selection.Album = args.Value?.ToString() ?? string.Empty;
 		Draft.Selection.AlbumId = 0;
 		albumResults = [];
+		Draft.Selection.AlbumImageUrl = string.Empty;
 		await DebounceAlbumSearchAsync();
 	}
 
@@ -471,6 +470,7 @@
 		ResetTracks();
 		Draft.Selection.Album = album.Title;
 		Draft.Selection.AlbumId = album.Id;
+		Draft.Selection.AlbumImageUrl = album.ImageUrl;
 		albumResults = [];
 		ComposerError = string.Empty;
 		if (Draft.MusicType != MusicRUs.Models.MusicLinkType.Track) return;
@@ -501,7 +501,7 @@
 	{
 		if (!selectedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
 		{
-            ToastService.Show("Tag added");
+            ToastService.Show("Genre added");
 
 			selectedTags.Add(tag);
 		}
@@ -512,7 +512,10 @@
 
 	private void RemoveTag(string tag)
 	{
-		selectedTags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
+		if (selectedTags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase)) > 0)
+		{
+			ToastService.Show("Genre removed");
+		}
 		SyncDraftTags();
 	}
 
@@ -520,7 +523,7 @@
 	{
 		if (!selectedFeedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
 		{
-            ToastService.Show("Tag added");
+            ToastService.Show("Genre added");
 
 			selectedFeedTags.Add(tag);
 		}
@@ -530,7 +533,10 @@
 
 	private void RemoveFeedTag(string tag)
 	{
-		selectedFeedTags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
+		if (selectedFeedTags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase)) > 0)
+		{
+			ToastService.Show("Genre removed");
+		}
 	}
 
 	private async Task DeletePostAsync(MusicRUs.Models.PostItem post)

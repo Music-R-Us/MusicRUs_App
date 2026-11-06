@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.JSInterop;
 using MusicRUs.Models;
@@ -82,9 +82,7 @@ public sealed class AuthSessionService
 				return AuthResult.Failure("Login failed. Check your credentials and try again.");
 			}
 
-			await SaveSessionAsync(session);
-			await forumProfiles.EnsureForumProfileAsync(CurrentUser?.UserId ?? 0, CurrentUser, cancellationToken);
-			return AuthResult.Success(CurrentUser!);
+			return await CompleteLoginAsync(session, cancellationToken);
 		}
 
 		await SignInAsync(request.Username);
@@ -111,9 +109,7 @@ public sealed class AuthSessionService
 				return result;
 			}
 
-			await SaveSessionAsync(result.User);
-			await forumProfiles.EnsureForumProfileAsync(CurrentUser?.UserId ?? 0, CurrentUser, cancellationToken);
-			return AuthResult.Success(CurrentUser!);
+			return await CompleteLoginAsync(result.User, cancellationToken);
 		}
 
 		await SignInAsync(request.Username);
@@ -140,19 +136,14 @@ public sealed class AuthSessionService
 			return result;
 		}
 
-		await SaveSessionAsync(result.User);
-		await forumProfiles.EnsureForumProfileAsync(CurrentUser?.UserId ?? 0, CurrentUser, cancellationToken);
-		return AuthResult.Success(CurrentUser!);
+		return await CompleteLoginAsync(result.User, cancellationToken);
 	}
 
 	public async Task SignInAsync(string username, string? displayName = null)
 	{
 		await InitializeAsync();
 
-		var session = UserSession.Create(username, displayName);
-		CurrentUser = session;
-		await jsRuntime.InvokeVoidAsync("MusicRUsAuth.saveSession", session);
-		Changed?.Invoke();
+		await SaveSessionAsync(UserSession.Create(username, displayName));
 	}
 
 	public async Task SignOutAsync()
@@ -184,12 +175,6 @@ public sealed class AuthSessionService
 	{
 		await InitializeAsync();
 		return await userLookup.GetUserAsync(userId, CurrentUser, cancellationToken);
-	}
-
-	public async Task<List<MusicAlbum>> GetAlbumsByArtistAsync(int artistId, CancellationToken cancellationToken = default)
-	{
-		await InitializeAsync();
-		return await musicCatalog.GetAlbumsByArtistAsync(artistId, CurrentUser, cancellationToken);
 	}
 
 	public async Task<bool> SaveForumProfileAsync(ForumProfile profile, CancellationToken cancellationToken = default)
@@ -229,10 +214,54 @@ public sealed class AuthSessionService
 		await InitializeAsync();
 		return await musicCatalog.GetAlbumTracksAsync(albumId, CurrentUser, cancellationToken);
 	}
+	public string? CollectionError => musicCatalog.CollectionError;
+
+	public async Task<bool> SaveCollectionChangesAsync(int userId, IReadOnlyCollection<MusicCollectionItem> original,
+		IReadOnlyCollection<MusicAlbum> desired, IReadOnlyDictionary<int, MediaFormat> formats, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await musicCatalog.SaveCollectionChangesAsync(userId, original, desired, formats, CurrentUser, cancellationToken);
+	}
+
+	public async Task<List<MusicCollectionItem>> GetCollectionAsync(int userId, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await musicCatalog.GetCollectionAsync(userId, CurrentUser, cancellationToken);
+	}
+
+	public async Task<bool> AddToCollectionAsync(int userId, int albumId, CancellationToken cancellationToken = default, MediaFormat? format = null)
+	{
+		await InitializeAsync();
+		return await musicCatalog.AddToCollectionAsync(userId, albumId, CurrentUser, cancellationToken, format);
+	}
+
+	public async Task<bool> RemoveFromCollectionAsync(int userId, int collectionId, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await musicCatalog.RemoveFromCollectionAsync(userId, collectionId, CurrentUser, cancellationToken);
+	}
+
+	public async Task<(MusicArtist? Artist, List<MusicAlbum> Albums)> GetArtistDiscographyAsync(int artistId, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await musicCatalog.GetArtistDiscographyAsync(artistId, CurrentUser, cancellationToken);
+	}
+	public async Task<MusicAlbum?> SearchAlbumAsync(string title, CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		return await musicCatalog.SearchAlbumAsync(title, CurrentUser, cancellationToken);
+	}
 
 	private static bool IsPrerenderInteropException(InvalidOperationException exception)
 	{
 		return exception.Message.Contains("JavaScript interop calls cannot be issued at this time", StringComparison.Ordinal);
+	}
+
+	private async Task<AuthResult> CompleteLoginAsync(UserSession session, CancellationToken cancellationToken)
+	{
+		await SaveSessionAsync(session);
+		await forumProfiles.EnsureForumProfileAsync(CurrentUser?.UserId ?? 0, CurrentUser, cancellationToken);
+		return AuthResult.Success(CurrentUser!);
 	}
 
 	private async Task SaveSessionAsync(UserSession session)
@@ -344,14 +373,14 @@ public sealed class AuthSessionService
 	private static UserSession CreateSessionFromLoginJson(JsonElement root, string fallbackUsername)
 	{
 		var userElement = root.TryGetProperty("user", out var nestedUser) ? nestedUser : root;
-		var userId = JsonElementReader.GetInt(userElement, "userId", "userid", "id")
-			?? JsonElementReader.GetInt(root, "userId", "userid", "id");
+		var userId = JsonElementReader.GetInt(userElement, "userId", "id")
+			?? JsonElementReader.GetInt(root, "userId", "id");
 		var email = JsonElementReader.GetString(userElement, "email", "emailAddress")
 			?? JsonElementReader.GetString(root, "email", "emailAddress");
-		var username = JsonElementReader.GetString(userElement, "username", "userName", "name")
-			?? JsonElementReader.GetString(root, "username", "userName", "name");
-		var displayName = JsonElementReader.GetString(userElement, "displayName", "fullName", "username", "userName", "name")
-			?? JsonElementReader.GetString(root, "displayName", "fullName", "username", "userName", "name");
+		var username = JsonElementReader.GetString(userElement, "username", "name")
+			?? JsonElementReader.GetString(root, "username", "name");
+		var displayName = JsonElementReader.GetString(userElement, "displayName", "fullName", "username", "name")
+			?? JsonElementReader.GetString(root, "displayName", "fullName", "username", "name");
 		var avatarUrl = JsonElementReader.GetString(userElement, "avatarUrl", "profilePictureUrl", "picture")
 			?? JsonElementReader.GetString(root, "avatarUrl", "profilePictureUrl", "picture");
 		var accessToken = JsonElementReader.GetString(root, "accessToken", "token", "jwt")

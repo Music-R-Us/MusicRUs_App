@@ -1,33 +1,111 @@
-﻿@page "/"
+@page "/"
+
+@inject MusicRUs.Services.PostFeedService PostFeed
+@inject MusicRUs.Services.AuthSessionService AuthSession
 
 <PageTitle>Home</PageTitle>
 
 
-<section class="gradient-surface p-8 lg:p-12">
+
+<section class="relative overflow-hidden rounded-3xl border border-fiery-terracotta-800 bg-linear-to-br from-fiery-terracotta-900/95 to-fiery-terracotta-700/85 shadow-xl p-8 lg:p-12 m-4">
 	<div class="relative grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
 		<div>
 			<h1 class="max-w-xl text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">
 				Music-R-Us
 			</h1>
 			<p class="mt-5 max-w-2xl text-base leading-7 text-porcelain-50 sm:text-lg">
-				A classic music forum built for music lovers to express their love for music and share their thoughts on the latest albums, concerts, and industry news. Whether you're a casual listener or a die-hard fan, Music-R-Us is the perfect place to connect with other music enthusiasts and stay up-to-date on all things music.
+				A classic music forum built for music lovers to express their love for music and share their thoughts on
+				the latest albums, concerts, and industry news. Whether you're a casual listener or a die-hard fan,
+				Music-R-Us is the perfect place to connect with other music enthusiasts and stay up-to-date on all
+				things music.
 			</p>
 
 		</div>
 
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-			<div class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 p-5 backdrop-blur">
+			<div class="rounded-2xl border border-fiery-terracotta-800 bg-fiery-terracotta-900/85 p-5">
 				<p class="text-sm font-medium text-porcelain-50">Music</p>
 				<p class="mt-2 text-2xl font-semibold text-porcelain-50">Music is a part of us all</p>
 			</div>
-			<div class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 p-5 backdrop-blur">
+			<div class="rounded-2xl border border-fiery-terracotta-800 bg-fiery-terracotta-900/85 p-5">
 				<p class="text-sm font-medium text-porcelain-50">Community</p>
 				<p class="mt-2 text-2xl font-semibold text-porcelain-50">Connect with other music enthusiasts</p>
 			</div>
-            <div class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 p-5 backdrop-blur">
+			<div class="rounded-2xl border border-fiery-terracotta-800 bg-fiery-terracotta-900/85 p-5">
 				<p class="text-sm font-medium text-porcelain-50">Love</p>
 				<p class="mt-2 text-2xl font-semibold text-porcelain-50">Express your passion for music</p>
 			</div>
 		</div>
 	</div>
 </section>
+<section class="relative overflow-hidden rounded-3xl border border-fiery-terracotta-800 bg-linear-to-br from-fiery-terracotta-900/95 to-fiery-terracotta-700/85 shadow-xl m-4 p-5 sm:p-6" aria-labelledby="recent-posts-heading">
+	<div class="relative mb-4 flex flex-wrap items-center justify-between gap-3">
+		<h2 id="recent-posts-heading" class="text-2xl font-semibold tracking-tight text-porcelain-50">Most recent posts</h2>
+		<a href="/posts" class="rounded-full border border-porcelain-50/20 px-4 py-2 text-sm font-medium text-porcelain-50 transition hover:bg-fiery-terracotta-800/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50">View all posts <span aria-hidden="true">&rarr;</span></a>
+	</div>
+	<div class="relative grid gap-2" aria-live="polite">
+		@if (isLoading)
+		{
+			<p class="py-4 text-sm text-porcelain-50/75" role="status">Loading recent posts...</p>
+		}
+		else if (recentPosts.Count == 0)
+		{
+			<p class="py-4 text-sm text-porcelain-50/75">No posts yet. Be the first to start a conversation!</p>
+		}
+		else
+		{
+			@foreach (var post in recentPosts)
+			{
+				<article @key="post.RouteId">
+					<a href="@($"/posts/{post.RouteId}")" class="group flex items-center justify-between gap-4 rounded-2xl border border-fiery-terracotta-800 bg-fiery-terracotta-900/85 px-4 py-3 text-porcelain-50 transition hover:border-fiery-terracotta-300/50 hover:bg-fiery-terracotta-800/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50">
+						<div class="min-w-0 flex-1">
+							<h3 class="truncate text-base font-semibold group-hover:underline">@post.Title</h3>
+							<p class="mt-1 truncate text-sm text-porcelain-50/60">@post.Body</p>
+							<p class="mt-1 truncate text-xs text-porcelain-50/75">By @GetAuthorDisplayName(post)</p>
+						</div>
+						<span class="shrink-0 text-xs text-porcelain-50/75">@post.CommentCount @(post.CommentCount == 1 ? "comment" : "comments")</span>
+					</a>
+				</article>
+			}
+		}
+	</div>
+</section>
+@code {
+	private IReadOnlyList<PostItem> recentPosts = [];
+	private readonly Dictionary<int, string> authorNames = [];
+	private bool isLoading = true;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var posts = await PostFeed.GetRecentPostsAsync();
+		recentPosts = posts.OrderByDescending(post => post.CreatedAtUtc).Take(10).ToList();
+		foreach (var userId in recentPosts.Select(post => post.UserId).Where(id => id > 0).Distinct())
+		{
+			try
+			{
+				var profile = await AuthSession.GetForumProfileAsync(userId);
+				if (!string.IsNullOrWhiteSpace(profile?.DisplayName))
+				{
+					authorNames[userId] = profile.DisplayName;
+					continue;
+				}
+
+				var user = await AuthSession.GetUserAsync(userId);
+				if (!string.IsNullOrWhiteSpace(user?.Username))
+				{
+					authorNames[userId] = user.Username;
+				}
+			}
+			catch
+			{
+				// Keep posts visible if an author lookup fails.
+			}
+		}
+		isLoading = false;
+	}
+
+	private string GetAuthorDisplayName(PostItem post) =>
+		authorNames.TryGetValue(post.UserId, out var name) ? name
+		: !string.IsNullOrWhiteSpace(post.Author) ? post.Author
+		: post.UserId > 0 ? $"User {post.UserId}" : "anonymous";
+}

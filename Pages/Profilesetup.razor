@@ -1,4 +1,4 @@
-@page "/profile/setup"
+﻿@page "/profile/setup"
 @page "/profile/setup/{UserId:int}"
 
 @layout MainLayout
@@ -233,6 +233,7 @@
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="album-search">Favorite album or collection item</label>
 							<input id="album-search" value="@albumSearch" @oninput="OnAlbumSearchInputAsync" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" />
+							<p class="text-sm text-porcelain-50/60">Search by album title or artist name. For missing albums, select the artist above first.</p>
 						</div>
 						@if (isSearchingAlbums)
 						{
@@ -274,7 +275,17 @@
 								</div>
 								<div class="flex flex-wrap gap-2">
 									<button type="button" @onclick="AddFavoriteAlbum" class="rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
-									<button type="button" @onclick="AddCollectionAlbum" class="rounded-2xl border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50">Add collection</button>
+									<label class="grid gap-1 text-sm text-porcelain-50/80">
+										Media format
+										<select @bind="selectedCollectionFormat" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2">
+											<option value="">Choose format</option>
+											@foreach (var format in Enum.GetValues<MediaFormat>())
+											{
+												<option value="@format">@(format == MediaFormat.Cd ? "CD" : format.ToString())</option>
+											}
+										</select>
+									</label>
+									<button type="button" disabled="@(selectedCollectionFormat is null || !collectionLoaded)" @onclick="AddCollectionAlbum" class="rounded-2xl border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50">Add collection</button>
 								</div>
 							</div>
 						}
@@ -333,6 +344,11 @@
 	public int UserId { get; set; }
 	private bool isReady;
 	private bool isSaving;
+	private List<MusicCollectionItem> originalCollection = [];
+	private readonly Dictionary<int, MediaFormat> newCollectionFormats = [];
+	private MediaFormat? selectedCollectionFormat;
+	private bool collectionLoaded;
+	private int loadedUserId;
 	private string formMessage = string.Empty;
 	private string genreSearch = string.Empty;
 	private string draftFavoriteGenre = string.Empty;
@@ -384,9 +400,16 @@
 			return;
 		}
 
+		if (loadedUserId == currentUserId) return;
+		loadedUserId = currentUserId;
 		var resolvedUserId = currentUserId;
 		var profile = await AuthSession.GetForumProfileAsync(resolvedUserId);
 		profileModel = ProfileSetupModel.FromProfile(profile, AuthSession.CurrentUser, resolvedUserId);
+		originalCollection = await AuthSession.GetCollectionAsync(resolvedUserId);
+		collectionLoaded = AuthSession.CollectionError is null;
+		if (!collectionLoaded) formMessage = AuthSession.CollectionError!;
+		profileModel.MusicCollection = originalCollection.Select(item => item.Album ?? new MusicAlbum { Id = item.AlbumId, Title = item.AlbumTitle }).DistinctBy(album => album.Id).ToList();
+		newCollectionFormats.Clear();
 		selectedColor = await ProfileColors.GetAsync(resolvedUserId);
 		draftFavoriteGenre = profileModel.FavoriteGenre;
 		genreSearch = draftFavoriteGenre;
@@ -413,12 +436,18 @@
 		var profile = profileModel.ToForumProfile();
 		profile.Genres = genres.Where(genre => profileModel.Tags.Contains(genre.Name, StringComparer.OrdinalIgnoreCase)).ToList();
 		var saved = await AuthSession.SaveForumProfileAsync(profile);
-		if (saved) await ProfileColors.SaveAsync(profileModel.UserId, SelectedHex);
+		if (saved)
+		{
+			saved = await SaveCollectionChangesAsync();
+			if (saved) await ProfileColors.SaveAsync(profileModel.UserId, SelectedHex);
+		}
 		isSaving = false;
 
 		if (!saved)
 		{
-			formMessage = "Could not confirm that all profile changes were saved. Your edits are still here. Check the API response and try again.";
+			formMessage = AuthSession.CollectionError ?? (string.IsNullOrWhiteSpace(formMessage)
+				? "Could not confirm that all profile changes were saved. Your edits are still here. Please try again."
+				: formMessage);
 			return;
 		}
 		
@@ -588,10 +617,41 @@
 		try
 		{
 			await Task.Delay(TimeSpan.FromMilliseconds(400), debounce.Token);
-			var results = await AuthSession.SearchAlbumsAsync(albumSearch, debounce.Token);
+			var query = albumSearch.Trim();
+			var results = await AuthSession.SearchAlbumsAsync(query, debounce.Token);
+			debounce.Token.ThrowIfCancellationRequested();
+			if (results.Count == 0)
+			{
+				// New artists may exist before their albums have been imported.
+				var artists = profileModel.FavoriteArtists.ToList();
+				if (artistResult is not null) artists.Add(artistResult);
+				var matchingArtists = await AuthSession.SearchArtistsAsync(query, debounce.Token);
+				debounce.Token.ThrowIfCancellationRequested();
+				artists.AddRange(matchingArtists.Where(artist =>
+					string.Equals(artist.Name.Trim(), query, StringComparison.OrdinalIgnoreCase)));
+				var importedAlbums = new List<MusicAlbum>();
+				foreach (var artist in artists.Where(artist => artist.Id > 0).DistinctBy(artist => artist.Id))
+				{
+					debounce.Token.ThrowIfCancellationRequested();
+					var discography = await AuthSession.GetArtistDiscographyAsync(artist.Id, debounce.Token);
+					importedAlbums.AddRange(discography.Albums.Where(album =>
+						album.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+						string.Equals(artist.Name.Trim(), query, StringComparison.OrdinalIgnoreCase)));
+				}
+				debounce.Token.ThrowIfCancellationRequested();
+				if (artists.Count > 0)
+				{
+					results = (await AuthSession.SearchAlbumsAsync(query, debounce.Token))
+						.Concat(importedAlbums).DistinctBy(album => album.Id).ToList();
+				}
+			}
 			if (!debounce.IsCancellationRequested && ReferenceEquals(albumSearchDebounce, debounce))
 			{
 				albumResults = results;
+				if (results.Count == 0)
+				{
+					formMessage = "No albums found. Try searching by artist name, or select the artist above and search the album title again.";
+				}
 			}
 		}
 		catch (OperationCanceledException)
@@ -637,17 +697,30 @@
 
 	private void AddCollectionAlbum()
 	{
-		if (albumResult is null || profileModel.MusicCollection.Any(album => album.Id == albumResult.Id))
+		if (selectedCollectionFormat is null || !collectionLoaded || albumResult is null || profileModel.MusicCollection.Any(album => album.Id == albumResult.Id))
 		{
 			return;
 		}
 
 		profileModel.MusicCollection.Add(albumResult);
+		newCollectionFormats[albumResult.Id] = selectedCollectionFormat.Value;
 	}
 
 	private void RemoveCollectionAlbum(int albumId)
 	{
 		profileModel.MusicCollection.RemoveAll(album => album.Id == albumId);
+		newCollectionFormats.Remove(albumId);
+	}
+
+	private async Task<bool> SaveCollectionChangesAsync()
+	{
+		if (!collectionLoaded)
+		{
+			formMessage = "Reload this page before editing the collection; it could not be loaded.";
+			return false;
+		}
+		return await AuthSession.SaveCollectionChangesAsync(profileModel.UserId, originalCollection,
+			profileModel.MusicCollection, newCollectionFormats);
 	}
 
 	private sealed class ProfileSetupModel

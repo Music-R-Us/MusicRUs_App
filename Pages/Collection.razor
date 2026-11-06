@@ -1,0 +1,276 @@
+﻿@page "/collection"
+
+@layout MainLayout
+
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject MusicRUs.Services.ToastService ToastService
+@inject NavigationManager Navigation
+
+<PageTitle>My Collection – MusicRUs</PageTitle>
+
+<section class="w-full">
+    <div
+        class="relative m-4 grid gap-8 overflow-hidden rounded-3xl border border-fiery-terracotta-800 bg-linear-to-br from-fiery-terracotta-900/95 to-fiery-terracotta-700/85 p-8 text-porcelain-50 shadow-xl lg:p-12">
+
+        <div class="grid gap-3">
+            <p class="text-xl font-semibold text-pine-teal-300">Library</p>
+            <h1 class="text-4xl font-semibold text-porcelain-50 sm:text-5xl">My Collection</h1>
+            <p class="max-w-2xl text-base text-porcelain-50/80">
+                Albums you've added to your personal collection.
+            </p>
+        </div>
+
+        @if (!isReady)
+        {
+            <div
+                class="rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-6 text-center text-porcelain-50/80">
+                Loading...
+            </div>
+        }
+        else if (!AuthSession.IsAuthenticated)
+        {
+            <div class="grid gap-4 rounded-2xl border border-granite-800/80 gradient-surface p-8 text-center backdrop-blur">
+                <p class="text-porcelain-50/80">Sign in to see your collection.</p>
+                <a href="/loginpick"
+                   class="mx-auto rounded-full bg-fiery-terracotta-500 px-5 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400">
+                    Login / Signup
+                </a>
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(AuthSession.CollectionError))
+            {
+                <p role="alert" class="rounded-2xl border border-fiery-terracotta-400/40 p-3 text-sm text-fiery-terracotta-300">
+                    @AuthSession.CollectionError</p>
+                }
+
+
+                @if (isEditing)
+                {
+                    <div class="grid gap-4 rounded-2xl border border-granite-800/80 gradient-surface p-6 backdrop-blur">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Add album to collection
+                            </p>
+                            <button type="button" @onclick="() => isEditing = false"
+                                    class="text-sm text-porcelain-50/75 transition hover:text-porcelain-50">✕ Close</button>
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+                            <input
+                            class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 placeholder-porcelain-50/70 outline-none transition focus:border-fiery-terracotta-300"
+                            placeholder="Album title..." @bind="albumSearchQuery" @bind:event="oninput"
+                            @onkeydown="OnSearchKeyDown" />
+                            <button type="button" @onclick="SearchAlbumAsync" disabled="@isSearching"
+                                    class="rounded-2xl border-2 border-porcelain-50/80 bg-pine-teal-700 px-5 py-3 text-sm font-bold text-porcelain-50 shadow-sm shadow-black/20 transition hover:border-porcelain-50 hover:bg-pine-teal-600 disabled:opacity-50">
+                                @(isSearching ? "..." : "Find")
+                            </button>
+                        </div>
+
+                        @if (searchedAlbum is not null)
+                        {
+                            <div
+                                class="flex flex-col gap-3 rounded-2xl border border-granite-800/80 bg-fiery-terracotta-950/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="flex items-center gap-3">
+                                    @if (!string.IsNullOrWhiteSpace(searchedAlbum.ImageUrl))
+                                    {
+                                        <img src="@searchedAlbum.ImageUrl" alt="@searchedAlbum.Title"
+                                             class="h-14 w-14 rounded-xl object-cover" />
+                                    }
+                                    <div>
+                                        <p class="font-semibold text-porcelain-50">@searchedAlbum.Title</p>
+                                        @if (!string.IsNullOrWhiteSpace(searchedAlbum.ArtistName))
+                                        {
+                                            <p class="text-sm text-porcelain-50/80">@searchedAlbum.ArtistName</p>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(searchedAlbum.ReleaseDate))
+                                        {
+                                            <p class="text-xs text-porcelain-50/70">@searchedAlbum.ReleaseDate</p>
+                                        }
+                                    </div>
+                                </div>
+                                @if (collection.Any(c => c.AlbumId == searchedAlbum.Id))
+                                {
+                                    <span
+                                        class="rounded-full border border-pine-teal-400/60 px-3 py-1.5 text-xs font-semibold text-pine-teal-300">
+                                        Already in collection
+                                    </span>
+                                }
+                                else
+                                {
+                                    <label class="grid gap-1 text-sm text-porcelain-50/80">
+                                        Media format
+                                        <select @bind="selectedFormat"
+                                                class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2 text-porcelain-50">
+                                            <option value="">Choose format</option>
+                                            @foreach (var format in Enum.GetValues<MediaFormat>())
+                                            {
+                                                <option value="@format">@(format == MediaFormat.Cd ? "CD" : format.ToString())</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <button type="button" @onclick="AddSearchedAlbumAsync" disabled="@(selectedFormat is null)"
+                                            class="self-start rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 sm:self-center">
+                                        + Add to collection
+                                    </button>
+                                }
+                            </div>
+                        }
+                        else if (albumSearchAttempted)
+                        {
+                            <p class="text-sm text-porcelain-50/75">No album found for "@albumSearchQuery".</p>
+                        }
+                    </div>
+                }
+
+                <div class="flex items-center justify-between">
+                    <p class="text-sm text-porcelain-50/80">
+                        @collection.Count album@(collection.Count == 1 ? "" : "s")
+                    </p>
+                    <button type="button"
+                            @onclick="() => { isEditing = !isEditing; searchedAlbum = null; albumSearchQuery = string.Empty; albumSearchAttempted = false; }"
+                            class="rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50/80 transition hover:text-porcelain-50">
+                        @(isEditing ? "Done" : "+ Add album")
+                    </button>
+                </div>
+
+                @if (collection.Count == 0)
+                {
+                    <div
+                        class="rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-8 text-center text-porcelain-50/80">
+                        Your collection is empty. Search for albums above to add them.
+                    </div>
+                }
+                else
+                {
+                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach (var item in collection)
+                        {
+                            <div
+                                class="group relative flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 transition hover:border-granite-700">
+                                @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                                {
+                                    <img src="@item.ImageUrl" alt="@item.AlbumTitle" class="h-14 w-14 rounded-lg object-cover" />
+                                }
+                                else
+                                {
+                                    <div
+                                        class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-fiery-terracotta-800/60 text-xs text-porcelain-50/80">
+                                        Album
+                                    </div>
+                                }
+                                <div class="grid gap-0.5 min-w-0 flex-1">
+                                    <p class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</p>
+                                    @if (!string.IsNullOrWhiteSpace(item.ArtistNames))
+                                    {
+                                        <p class="truncate text-sm text-porcelain-50/80">@item.ArtistNames</p>
+                                    }
+                                    @if (item.AddedAt.HasValue)
+                                    {
+                                        <p class="text-xs text-porcelain-50/70">Added @item.AddedAt.Value.LocalDateTime.ToString("d MMM yyyy")</p>
+                                    }
+                                </div>
+                                <button type="button" @onclick="() => RemoveItemAsync(item)"
+                                        class="absolute right-3 top-3 hidden rounded-full border border-fiery-terracotta-400/40 bg-fiery-terracotta-950/80 p-1 text-xs text-fiery-terracotta-300 transition hover:bg-fiery-terracotta-500 group-hover:flex">
+                                    ✕
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+
+        </div>
+    </section>
+
+@code {
+    private bool isReady;
+    private bool isEditing;
+    private bool isSearching;
+    private MediaFormat? selectedFormat;
+    private bool albumSearchAttempted;
+    private string albumSearchQuery = string.Empty;
+    private MusicAlbum? searchedAlbum;
+    private List<MusicCollectionItem> collection = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await AuthSession.InitializeAsync();
+
+        if (!AuthSession.IsAuthenticated || AuthSession.CurrentUser?.UserId is not > 0)
+        {
+            isReady = true;
+            StateHasChanged();
+            return;
+        }
+
+        collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId);
+        isReady = true;
+        StateHasChanged();
+    }
+
+    private async Task SearchAlbumAsync()
+    {
+        var query = albumSearchQuery.Trim();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return;
+        }
+
+        isSearching = true;
+        searchedAlbum = null;
+        albumSearchAttempted = false;
+
+        searchedAlbum = await AuthSession.SearchAlbumAsync(query);
+        albumSearchAttempted = true;
+        isSearching = false;
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchAlbumAsync();
+        }
+    }
+
+    private async Task AddSearchedAlbumAsync()
+    {
+        if (searchedAlbum is null || AuthSession.CurrentUser?.UserId is not > 0)
+        {
+            return;
+        }
+
+        var albumTitle = searchedAlbum.Title;
+        var ok = await AuthSession.AddToCollectionAsync(AuthSession.CurrentUser.UserId, searchedAlbum.Id, format:
+selectedFormat);
+        if (ok)
+        {
+            collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId);
+            searchedAlbum = null;
+            albumSearchQuery = string.Empty;
+            albumSearchAttempted = false;
+            ToastService.Show($"\"{albumTitle}\" added to collection.");
+        }
+    }
+
+    private async Task RemoveItemAsync(MusicCollectionItem item)
+    {
+        if (AuthSession.CurrentUser?.UserId is not > 0)
+        {
+            return;
+        }
+
+        var ok = await AuthSession.RemoveFromCollectionAsync(AuthSession.CurrentUser.UserId, item.Id);
+        if (ok)
+        {
+            collection.Remove(item);
+            ToastService.Show($"\"{item.AlbumTitle}\" removed from collection.");
+        }
+    }
+
+}

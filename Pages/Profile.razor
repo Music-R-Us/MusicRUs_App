@@ -1,4 +1,4 @@
-@page "/{username}"
+﻿@page "/{username}"
 @page "/profile/{UserId:int}"
 
 @layout MainLayout
@@ -10,6 +10,10 @@
 <PageTitle>@(CurrentProfile?.DisplayName ?? DisplayUsername) Profile</PageTitle>
 
 <section class="w-full">
+	@if (!string.IsNullOrWhiteSpace(AuthSession.CollectionError))
+	{
+		<p role="alert" class="p-3 text-sm text-fiery-terracotta-300">@AuthSession.CollectionError</p>
+	}
 	<div class="grid gap-6 rounded-4xl border border-granite-800/80 bg-linear-to-br from-(--profile-start) to-(--profile-end) p-8 shadow-xl backdrop-blur" style="@ProfileBackgroundStyle">
 		<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-5">
@@ -24,7 +28,7 @@
 					</div>
 				}
 				<div class="grid gap-1">
-					<p class="text-sm font-semibold uppercase tracking-[0.3em] text-porcelain-50/70">Profile</p>
+					<p class="text-3xl font-semibold text-porcelain-50 font-outline-1">Profile</p>
 					<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl font-outline-1">@DisplayUsername</h1>
 				</div>
 			</div>
@@ -48,7 +52,7 @@
 		{
 			<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
 				<div>
-					<p class="text-sm font-semibold uppercase tracking-[0.25em] text-granite-300">Profile Information</p>
+					<p class="text-xl font-semibold text-porcelain-50">Profile Information</p>
 				</div>
 				<div class="grid gap-2">
 					<p class="max-w-2xl text-base leading-7 text-porcelain-50/80 sm:text-lg">
@@ -104,7 +108,63 @@
 							</div>
 						</div>
 					}
+
 				</div>
+				<div class="grid content-start gap-4 self-start rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80 sm:col-span-2">
+					@if (Collection.Count > 0)
+					{
+						<div class="grid gap-3">
+							<div class="flex items-center justify-between">
+								<p class="text-xl font-semibold text-porcelain-50">Music collection</p>
+								@if (CanEditProfile)
+								{
+									<a href="/collection" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
+								}
+							</div>
+							<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+								@foreach (var item in Collection.Take(5))
+								{
+									<div class="flex items-center gap-3 rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
+										@if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+										{
+											<img src="@item.ImageUrl" alt="@item.AlbumTitle" class="h-12 w-12 rounded-lg object-cover" />
+										}
+										else
+										{
+											<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-granite-800 text-xs text-porcelain-50/40">♪</div>
+										}
+										<div class="min-w-0">
+											<p class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</p>
+											@if (!string.IsNullOrWhiteSpace(item.ArtistNames))
+											{
+												<p class="truncate text-sm text-porcelain-50/60">@item.ArtistNames</p>
+											}
+										</div>
+									</div>
+								}
+							</div>
+							@if (Collection.Count > 5)
+							{
+								@if (CanEditProfile)
+								{
+									<a href="/collection" class="flex items-center gap-2 rounded-xl border border-granite-700/60 bg-granite-900/40 px-4 py-3 text-sm text-porcelain-50/60 transition hover:bg-granite-900/70 hover:text-porcelain-50">
+										<span>and @(Collection.Count - 5) more...</span>
+										<span class="ml-auto text-pine-teal-300">See full collection →</span>
+									</a>
+								}
+								else
+								{
+									<p class="px-1 text-sm text-porcelain-50/40">and @(Collection.Count - 5) more...</p>
+								}
+							}
+						</div>
+					}
+					else
+					{
+						<p class="text-xl font-semibold text-porcelain-50">No music collection yet.</p>
+					}
+				</div>
+
 			</div>
 		}
 	</div>
@@ -116,6 +176,7 @@
 
 	[Parameter]
 	public int UserId { get; set; }
+	private List<MusicCollectionItem> Collection = [];
 
 	private ForumProfile? CurrentProfile;
 
@@ -141,9 +202,14 @@
 	protected override async Task OnParametersSetAsync()
 	{
 		await AuthSession.InitializeAsync();
+		Collection = [];
 		CurrentProfile = UserId > 0
 			? await AuthSession.GetForumProfileAsync(UserId)
-			: await AuthSession.GetProfileAsync(Username);	
+			: await AuthSession.GetProfileAsync(Username);
+		if (CurrentProfile?.UserId > 0)
+		{
+			Collection = await AuthSession.GetCollectionAsync(CurrentProfile.UserId);
+		}
 	}
 
 	private string DisplayUsername => string.IsNullOrWhiteSpace(CurrentProfile?.DisplayName)

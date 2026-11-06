@@ -1,0 +1,268 @@
+﻿@page "/music/artist/{ArtistId:int}"
+
+@layout MainLayout
+
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject MusicRUs.Services.ToastService ToastService
+@inject NavigationManager Navigation
+
+<PageTitle>@(artist?.Name ?? "Artist") – MusicRUs</PageTitle>
+
+@if (isLoading)
+{
+    <div class="text-porcelain-50/60 py-12 text-center">Loading...</div>
+}
+else if (artist is null)
+{
+    <div class="grid gap-4 rounded-2xl border border-granite-800/80 gradient-surface p-8 text-center backdrop-blur">
+        <p class="text-porcelain-50/60">Artist not found.</p>
+        <a href="/music"
+           class="mx-auto rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm text-porcelain-50 transition hover:bg-granite-800">
+            ← Back to Music
+        </a>
+    </div>
+}
+else
+{
+    <section class="w-full">
+        <div class="grid gap-8">
+            @if (!string.IsNullOrWhiteSpace(AuthSession.CollectionError))
+            {
+                <p role="alert" class="rounded-2xl border border-fiery-terracotta-400/40 p-3 text-sm text-fiery-terracotta-300">
+                    @AuthSession.CollectionError</p>
+                }
+
+                @* Artist header *@
+                <div class="relative overflow-hidden rounded-3xl border border-granite-800/80 bg-coffee-bean-950/60">
+                    <div class="flex flex-col gap-6 p-8 sm:flex-row sm:items-end">
+                        @if (!string.IsNullOrWhiteSpace(artist.ImageUrl))
+                        {
+                            <img src="@artist.ImageUrl" alt="@artist.Name"
+                                 class="h-36 w-36 rounded-2xl object-cover shadow-lg shadow-black/40" />
+                        }
+                        else
+                        {
+                            <div
+                                class="flex h-36 w-36 items-center justify-center rounded-2xl bg-pine-teal-300 text-5xl font-bold text-coffee-bean-950">
+                                @(artist.Name.Length > 0 ? artist.Name[0].ToString().ToUpperInvariant() : "?")
+                            </div>
+                        }
+                        <div class="grid gap-2">
+                            <p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Artist</p>
+                            <h1 class="text-5xl font-semibold tracking-tight text-porcelain-50 sm:text-6xl">@artist.Name</h1>
+                            <p class="text-sm text-porcelain-50/50">@albums.Count album@(albums.Count == 1 ? "" : "s")</p>
+                        </div>
+                    </div>
+                </div>
+
+                @* Albums + tracks *@
+                @if (AuthSession.IsAuthenticated)
+                {
+                    <label class="grid max-w-xs gap-1 text-sm text-porcelain-50/80">
+                        Media format for albums you add
+                        <select @bind="selectedFormat"
+                                class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2 text-porcelain-50">
+                            <option value="">Choose format</option>
+                            @foreach (var format in Enum.GetValues<MediaFormat>())
+                            {
+                                <option value="@format">@(format == MediaFormat.Cd ? "CD" : format.ToString())</option>
+                            }
+                        </select>
+                    </label>
+                }
+                @if (albums.Count == 0)
+                {
+                    <div
+                        class="rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-6 text-center text-porcelain-50/60">
+                        No albums found for this artist.
+                    </div>
+                }
+                else
+                {
+                    <div class="grid gap-6">
+                        @foreach (var album in albums)
+                        {
+                            <div class="rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 overflow-hidden">
+                                @* Album header *@
+                                <div class="flex items-center gap-5 border-b border-granite-800/60 p-5">
+                                    @if (!string.IsNullOrWhiteSpace(album.ImageUrl))
+                                    {
+                                        <img src="@album.ImageUrl" alt="@album.Title" class="h-16 w-16 rounded-xl object-cover" />
+                                    }
+                                    else
+                                    {
+                                        <div
+                                            class="flex h-16 w-16 items-center justify-center rounded-xl bg-fiery-terracotta-800/60 text-xs text-porcelain-50/60">
+                                            Album
+                                        </div>
+                                    }
+                                    <div class="grid gap-0.5 flex-1 min-w-0">
+                                        <p class="text-lg font-semibold text-porcelain-50">@album.Title</p>
+                                        <div class="flex flex-wrap gap-3 text-sm text-porcelain-50/50">
+                                            @if (!string.IsNullOrWhiteSpace(album.AlbumType))
+                                            {
+                                                <span class="capitalize">@album.AlbumType</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(album.ReleaseDate))
+                                            {
+                                                <span>@album.ReleaseDate</span>
+                                            }
+                                            @if (album.TotalTracks.HasValue)
+                                            {
+                                                <span>@album.TotalTracks track@(album.TotalTracks == 1 ? "" : "s")</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (AuthSession.IsAuthenticated && AuthSession.CurrentUser?.UserId > 0)
+                                    {
+                                        @if (collectionAlbumIds.Contains(album.Id))
+                                        {
+                                            <button type="button" @onclick="() => RemoveFromCollectionAsync(album.Id)"
+                                                    class="rounded-full border border-pine-teal-400/60 bg-pine-teal-400/10 px-3 py-1.5 text-xs font-semibold text-pine-teal-300 transition hover:bg-fiery-terracotta-950/60 hover:border-fiery-terracotta-400/60 hover:text-fiery-terracotta-300">
+                                                ✓ In collection
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" @onclick="() => AddToCollectionAsync(album.Id)"
+                                                    disabled="@(selectedFormat is null)"
+                                                    class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1.5 text-xs font-semibold text-porcelain-50/60 transition hover:border-pine-teal-400/40 hover:text-porcelain-50">
+                                                + Collection
+                                            </button>
+                                        }
+                                    }
+                                </div>
+
+                                @* Tracks *@
+                                @if (albumTracks.TryGetValue(album.Id, out var tracks) && tracks.Count > 0)
+                                {
+                                    <div class="divide-y divide-granite-800/40">
+                                        @foreach (var track in tracks.OrderBy(t => t.DiscNumber ?? 1).ThenBy(t => t.TrackNumber ?? 999))
+                                        {
+                                            <div class="flex items-center gap-4 px-5 py-3 transition hover:bg-coffee-bean-900/40">
+                                                <span class="w-6 text-center text-sm tabular-nums text-porcelain-50/40">
+                                                    @(track.TrackNumber?.ToString() ?? "-")
+                                                </span>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="truncate text-sm font-medium text-porcelain-50">@track.Title</p>
+                                                    @if (track.Explicit == true)
+                                                    {
+                                                        <span
+                                                        class="rounded px-1 text-[10px] font-bold uppercase tracking-wide bg-granite-700 text-porcelain-50/60">E</span>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrWhiteSpace(track.DurationFormatted))
+                                                {
+                                                    <span class="text-sm tabular-nums text-porcelain-50/40">@track.DurationFormatted</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else if (loadingTrackAlbumId == album.Id)
+                                {
+                                    <div class="px-5 py-4 text-sm text-porcelain-50/50">Loading tracks...</div>
+                                }
+                                else if (!albumTracks.ContainsKey(album.Id))
+                                {
+                                    <button type="button" @onclick="() => LoadTracksAsync(album.Id)"
+                                            class="w-full px-5 py-3 text-left text-sm text-porcelain-50/50 transition hover:text-porcelain-50/80">
+                                        Show tracks ↓
+                                    </button>
+                                }
+                                else
+                                {
+                                    <div class="px-5 py-4 text-sm text-porcelain-50/50">No tracks available.</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+            </div>
+        </section>
+    }
+
+@code {
+    [Parameter]
+    public int ArtistId { get; set; }
+
+    private bool isLoading = true;
+    private MusicArtist? artist;
+    private List<MusicAlbum> albums = [];
+    private Dictionary<int, List<MusicTrack>> albumTracks = [];
+    private HashSet<int> collectionAlbumIds = [];
+    private Dictionary<int, int> collectionEntryIds = [];
+    private int loadingTrackAlbumId;
+    private MediaFormat? selectedFormat;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        artist = null;
+        albums = [];
+        albumTracks = [];
+        collectionAlbumIds = [];
+        collectionEntryIds = [];
+
+        var discography = await AuthSession.GetArtistDiscographyAsync(ArtistId);
+        artist = discography.Artist;
+        albums = discography.Albums.OrderByDescending(a => a.ReleaseDate).ToList();
+
+        if (AuthSession.IsAuthenticated && AuthSession.CurrentUser?.UserId > 0)
+        {
+            var collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId);
+            SetCollection(collection);
+        }
+
+        isLoading = false;
+    }
+
+    private async Task LoadTracksAsync(int albumId)
+    {
+        loadingTrackAlbumId = albumId;
+        var tracks = await AuthSession.GetAlbumTracksAsync(albumId);
+        albumTracks[albumId] = tracks;
+        loadingTrackAlbumId = 0;
+    }
+
+    private async Task AddToCollectionAsync(int albumId)
+    {
+        if (AuthSession.CurrentUser?.UserId is not > 0)
+        {
+            return;
+        }
+
+        var ok = await AuthSession.AddToCollectionAsync(AuthSession.CurrentUser.UserId, albumId, format: selectedFormat);
+        if (ok)
+        {
+            ToastService.Show("Album added to collection.");
+            SetCollection(await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId));
+        }
+    }
+
+    private async Task RemoveFromCollectionAsync(int albumId)
+    {
+        if (AuthSession.CurrentUser?.UserId is not > 0)
+        {
+            return;
+        }
+
+        if (!collectionEntryIds.TryGetValue(albumId, out var collectionId))
+        {
+            return;
+        }
+
+        var ok = await AuthSession.RemoveFromCollectionAsync(AuthSession.CurrentUser.UserId, collectionId);
+        if (ok)
+        {
+            ToastService.Show("Album removed from collection.");
+            SetCollection(await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId));
+        }
+    }
+    private void SetCollection(List<MusicCollectionItem> collection)
+    {
+        collectionAlbumIds = collection.Select(item => item.AlbumId).ToHashSet();
+        collectionEntryIds = collection.GroupBy(item => item.AlbumId).ToDictionary(group => group.Key, group => group.First().Id);
+    }
+}

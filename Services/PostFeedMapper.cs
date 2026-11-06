@@ -72,6 +72,7 @@ internal static class PostFeedMapper
 		post.Song = ReadMusicName(element, "track", "title", "name") ?? post.Song;
 		if (JsonElementReader.TryGetProperty(element, "track", out var track) && track.ValueKind == JsonValueKind.Object)
 		{
+			post.TrackId ??= JsonElementReader.GetInt(track, "id");
 			post.TrackAlbumId = JsonElementReader.GetInt(track, "albumId");
 			post.TrackImageUrl = JsonElementReader.GetString(track, "imageUrl") ?? string.Empty;
 			if (JsonElementReader.TryGetProperty(track, "album", out var album) && album.ValueKind == JsonValueKind.Object)

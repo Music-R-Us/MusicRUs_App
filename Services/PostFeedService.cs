@@ -96,6 +96,11 @@ public sealed class PostFeedService
 			var postFromApi = await TryPostForumPostAsync(forumRequest, request.Author, user.AccessToken, cancellationToken);
 			if (postFromApi is not null)
 			{
+				if (draft.RequiresMusicSelection && draft.MusicType == MusicLinkType.Track)
+				{
+					postFromApi.TrackAlbumId ??= draft.Selection.AlbumId > 0 ? draft.Selection.AlbumId : null;
+					if (string.IsNullOrWhiteSpace(postFromApi.TrackImageUrl)) postFromApi.TrackImageUrl = draft.Selection.AlbumImageUrl;
+				}
 				return postFromApi;
 			}
 		}
@@ -110,6 +115,9 @@ public sealed class PostFeedService
 			Artist = request.Artist,
 			Album = request.Album,
 			Song = request.Song,
+			TrackId = draft.RequiresMusicSelection && draft.MusicType == MusicLinkType.Track ? draft.Selection.TrackId : null,
+			TrackAlbumId = draft.RequiresMusicSelection && draft.MusicType == MusicLinkType.Track ? draft.Selection.AlbumId : null,
+			TrackImageUrl = draft.RequiresMusicSelection && draft.MusicType == MusicLinkType.Track ? draft.Selection.AlbumImageUrl : string.Empty,
 			Tags = request.Tags,
 			Author = request.Author,
 			CreatedAtUtc = DisplayTime.Now
@@ -139,11 +147,7 @@ public sealed class PostFeedService
 				UserId = user.UserId,
 				Content = request.Body
 			};
-			if (await TryPostToApiAsync("api/Comment", forumRequest, user.AccessToken, cancellationToken))
-			{
-				AddLocalComment(post, request.Author, request.Body, user);
-				return;
-			}
+			await TryPostToApiAsync("api/Comment", forumRequest, user.AccessToken, cancellationToken);
 		}
 
 		AddLocalComment(post, request.Author, request.Body, user);
@@ -339,7 +343,7 @@ public sealed class PostFeedService
 		{
 			Content = JsonContent.Create(requestBody)
 		};
-		AddAuthorizationHeader(request, accessToken);
+		BackendApiClient.AddAuthorizationHeader(request, accessToken);
 		using var response = await httpClient.SendAsync(request, cancellationToken);
 		var content = await response.Content.ReadAsStringAsync(cancellationToken);
 		if (!response.IsSuccessStatusCode)
@@ -431,7 +435,7 @@ public sealed class PostFeedService
 			{
 				Content = JsonContent.Create(body)
 			};
-			AddAuthorizationHeader(request, accessToken);
+			BackendApiClient.AddAuthorizationHeader(request, accessToken);
 			using var response = await httpClient.SendAsync(request, cancellationToken);
 			return response.IsSuccessStatusCode;
 		}
@@ -448,7 +452,7 @@ public sealed class PostFeedService
 			try
 			{
 				using var request = new HttpRequestMessage(HttpMethod.Delete, relativeUrl);
-				AddAuthorizationHeader(request, accessToken);
+				BackendApiClient.AddAuthorizationHeader(request, accessToken);
 				using var response = await httpClient.SendAsync(request, cancellationToken);
 				if (response.IsSuccessStatusCode)
 				{
@@ -492,14 +496,8 @@ public sealed class PostFeedService
 	{
 		var highlightCutoff = DisplayTime.Now.AddDays(-3);
 		return sourcePosts
-			.Select(post => new
-			{
-				Post = post,
-				IsRecentOwnPost = IsOwnPost(post, currentUser) && post.CreatedAtUtc >= highlightCutoff
-			})
-			.OrderByDescending(item => item.IsRecentOwnPost)
-			.ThenByDescending(item => item.Post.CreatedAtUtc)
-			.Select(item => item.Post)
+			.OrderByDescending(post => IsOwnPost(post, currentUser) && post.CreatedAtUtc >= highlightCutoff)
+			.ThenByDescending(post => post.CreatedAtUtc)
 			.ToList();
 	}
 
@@ -561,13 +559,5 @@ public sealed class PostFeedService
 	{
 		return comment.CommentId > 0 && comment.CommentId == target.CommentId
 			|| comment.Id == target.Id;
-	}
-
-	private static void AddAuthorizationHeader(HttpRequestMessage request, string accessToken)
-	{
-		if (!string.IsNullOrWhiteSpace(accessToken))
-		{
-			request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-		}
 	}
 }
