@@ -196,6 +196,7 @@ else
     private int loadingTrackAlbumId;
     private MediaFormat? selectedFormat;
 
+    // Loads the routed artist's albums and the signed-in user's collection membership.
     protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
@@ -218,6 +219,7 @@ else
         isLoading = false;
     }
 
+    // Loads and stores an album's tracks while showing its loading indicator.
     private async Task LoadTracksAsync(int albumId)
     {
         loadingTrackAlbumId = albumId;
@@ -226,6 +228,7 @@ else
         loadingTrackAlbumId = 0;
     }
 
+    // Adds the selected album and media format, then refreshes collection membership.
     private async Task AddToCollectionAsync(int albumId)
     {
         if (AuthSession.CurrentUser?.UserId is not > 0)
@@ -241,6 +244,7 @@ else
         }
     }
 
+    // Removes the album's owned entry, then refreshes collection membership.
     private async Task RemoveFromCollectionAsync(int albumId)
     {
         if (AuthSession.CurrentUser?.UserId is not > 0)
@@ -260,6 +264,7 @@ else
             SetCollection(await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId));
         }
     }
+    // Keeps the collection entries and owned-album lookup in sync.
     private void SetCollection(List<MusicCollectionItem> collection)
     {
         collectionAlbumIds = collection.Select(item => item.AlbumId).ToHashSet();

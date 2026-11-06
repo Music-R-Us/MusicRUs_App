@@ -133,6 +133,7 @@
 	private List<MusicArtist> artistResults = [];
 	private List<MusicAlbum> albumResults = [];
 
+	// Searches the catalog using the selected artist or album mode.
 	private async Task RunSearchAsync()
 	{
 		var query = searchQuery.Trim();
@@ -180,6 +181,7 @@
 		isSearching = false;
 	}
 
+	// Runs the search when the user presses Enter.
 	private async Task OnSearchKeyDown(KeyboardEventArgs e)
 	{
 		if (e.Key == "Enter")
@@ -188,6 +190,7 @@
 		}
 	}
 
+	// Changes the search mode and clears previous results.
 	private void SetMode(string mode)
 	{
 		searchMode = mode;
@@ -196,6 +199,7 @@
 		hasSearched = false;
 	}
 
+	// Returns the styling for an active or inactive search-mode tab.
 	private string TabClass(string mode) => mode == searchMode
 		? "rounded-full border-2 border-pine-teal-300 bg-pine-teal-400/10 px-4 py-1.5 text-sm font-semibold text-pine-teal-300"
 		: "rounded-full border border-granite-700 bg-granite-900/60 px-4 py-1.5 text-sm font-semibold text-porcelain-50/80 transition hover:text-porcelain-50";

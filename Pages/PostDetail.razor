@@ -193,6 +193,7 @@ else
 	private string AlbumArtistName = string.Empty;
 	private const int CommentsPageSize = 10;
 
+	// Loads the routed post, its author, linked music details, and first comment page.
 	protected override async Task OnParametersSetAsync()
 	{
 		await AuthSession.InitializeAsync();
@@ -207,6 +208,7 @@ else
 		await LoadCommentsAsync(1);
 	}
 
+	// Fills in linked music details used by the post's music card.
 	private async Task LoadMusicDetailsAsync()
 	{
 		AlbumArtistName = string.Empty;
@@ -246,8 +248,10 @@ else
 		if (string.IsNullOrWhiteSpace(post.TrackArtistName)) post.TrackArtistName = AlbumArtistName;
 	}
 
+	// Returns to the posts feed.
 	private void GoBack() => Navigation.NavigateTo("/posts");
 
+	// Submits the comment draft, clears it, and reloads the first comment page.
 	private async Task AddCommentAsync()
 	{
 		if (Post is null || string.IsNullOrWhiteSpace(CommentDraft))
@@ -263,6 +267,7 @@ else
 		await LoadCommentsAsync(1);
 	}
 
+	// Deletes the current user's post and returns to the feed after success.
 	private async Task DeletePostAsync()
 	{
 		if (Post is null || !IsOwnPost)
@@ -278,6 +283,7 @@ else
 		}
 	}
 
+	// Deletes the current user's comment and reloads the current comment page.
 	private async Task DeleteCommentAsync(MusicRUs.Models.CommentItem comment)
 	{
 		if (Post is null || !IsOwnComment(comment))
@@ -293,6 +299,7 @@ else
 		}
 	}
 
+	// Loads the requested comment page and its authors' profile details.
 	private async Task LoadCommentsAsync(int page)
 	{
 		if (Post is null)
@@ -305,6 +312,7 @@ else
 		await LoadCommentProfilesAsync();
 	}
 
+	// Loads author profiles for the visible comments.
 	private async Task LoadCommentProfilesAsync()
 	{
 		CommentProfiles = [];
@@ -325,16 +333,19 @@ else
 		}
 	}
 
+	// Loads the previous comment page without going below page one.
 	private async Task PreviousCommentsPageAsync()
 	{
 		await LoadCommentsAsync(Math.Max(1, CommentPage.Page - 1));
 	}
 
+	// Loads the next comment page without passing the last page.
 	private async Task NextCommentsPageAsync()
 	{
 		await LoadCommentsAsync(Math.Min(CommentPage.TotalPages, CommentPage.Page + 1));
 	}
 
+	// Checks whether the post contains an artist, album, or song name.
 	private static bool HasMusicSelection(MusicRUs.Models.PostItem post)
 	{
 		return !string.IsNullOrWhiteSpace(post.Artist)
@@ -357,11 +368,13 @@ else
 	private bool IsOwnPost => Post is not null
 		&& MusicRUs.Services.PostFeedService.IsOwnPost(Post, AuthSession.CurrentUser);
 
+	// Checks comment ownership using the user's ID or matching username.
 	private bool IsOwnComment(MusicRUs.Models.CommentItem comment)
 	{
 		return MusicRUs.Services.PostFeedService.IsOwnComment(comment, AuthSession.CurrentUser);
 	}
 
+	// Uses the author's profile name, username, or user-ID fallback.
 	private string GetCommentAuthor(MusicRUs.Models.CommentItem comment)
 	{
 		var profile = GetCommentAuthorProfile(comment);
@@ -375,6 +388,7 @@ else
 			: $"User {comment.UserId}";
 	}
 
+	// Returns the loaded profile for a comment's author when available.
 	private MusicRUs.Models.ForumProfile? GetCommentAuthorProfile(MusicRUs.Models.CommentItem comment)
 	{
 		return comment.UserId > 0 && CommentProfiles.TryGetValue(comment.UserId, out var profile)
@@ -382,11 +396,13 @@ else
 			: null;
 	}
 
+	// Returns the comment author's profile avatar or an empty string.
 	private string GetCommentAuthorAvatarUrl(MusicRUs.Models.CommentItem comment)
 	{
 		return GetCommentAuthorProfile(comment)?.AvatarUrl ?? string.Empty;
 	}
 
+	// Builds a one-letter avatar fallback from the comment author's name.
 	private string GetCommentAuthorInitial(MusicRUs.Models.CommentItem comment)
 	{
 		var author = GetCommentAuthor(comment);
@@ -395,6 +411,7 @@ else
 			: author.Trim()[0].ToString().ToUpperInvariant();
 	}
 
+	// Builds the comment author's profile link or falls back to the feed.
 	private static string GetCommentAuthorProfileUrl(MusicRUs.Models.CommentItem comment)
 	{
 		return comment.UserId > 0

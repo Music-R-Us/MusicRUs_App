@@ -75,6 +75,7 @@
 	private readonly Dictionary<int, string> authorNames = [];
 	private bool isLoading = true;
 
+	// Loads the ten newest posts and resolves their authors' display names.
 	protected override async Task OnInitializedAsync()
 	{
 		var posts = await PostFeed.GetRecentPostsAsync();
@@ -104,6 +105,7 @@
 		isLoading = false;
 	}
 
+	// Uses a resolved author name, saved post author, or fallback label.
 	private string GetAuthorDisplayName(PostItem post) =>
 		authorNames.TryGetValue(post.UserId, out var name) ? name
 		: !string.IsNullOrWhiteSpace(post.Author) ? post.Author

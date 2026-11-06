@@ -73,6 +73,7 @@ public sealed class CommentPage
 
 	public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling(TotalCount / (double)PageSize);
 
+	// Creates an empty comment page with the requested page number and size.
 	public static CommentPage Empty(int page, int pageSize) => new()
 	{
 		Page = page,
@@ -225,6 +226,7 @@ public sealed class UserSession
 
 	public string AccessToken { get; set; } = string.Empty;
 
+	// Normalizes session details and supplies display-name and avatar defaults.
 	public static UserSession Create(string username, string? displayName = null, string? avatarUrl = null, string? accessToken = null, int userId = 0)
 	{
 		var normalizedUsername = username.Trim();

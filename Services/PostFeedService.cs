@@ -12,12 +12,14 @@ public sealed class PostFeedService
 	private readonly List<PostItem> posts = [];
 	private readonly object gate = new();
 
+	// Stores the HTTP client and settings used for backend and local posts.
 	public PostFeedService(HttpClient httpClient, IOptions<BackendApiOptions> backendApiOptions)
 	{
 		this.httpClient = httpClient;
 		backendOptions = backendApiOptions.Value;
 	}
 
+	// Loads the backend feed, falling back to in-memory posts when it is unavailable.
 	public async Task<IReadOnlyList<PostItem>> GetRecentPostsAsync(UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
 		if (CanUseBackend)
@@ -35,6 +37,7 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Looks up a post in the backend, then falls back to the in-memory list.
 	public async Task<PostItem?> GetPostAsync(string postKey, CancellationToken cancellationToken = default)
 	{
 		if (CanUseBackend)
@@ -52,6 +55,7 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Validates the draft and saves a backend post, or an in-memory post when backend use is disabled.
 	public async Task<PostItem> CreatePostAsync(PostDraft draft, UserSession user, CancellationToken cancellationToken = default)
 	{
 		if (draft.Title.Trim().Length < 8)
@@ -131,6 +135,7 @@ public sealed class PostFeedService
 		return post;
 	}
 
+	// Attempts the backend write when possible, then adds the comment to the local post.
 	public async Task AddCommentAsync(PostItem post, UserSession? user, string body, CancellationToken cancellationToken = default)
 	{
 		var request = new CreateCommentRequest
@@ -153,6 +158,7 @@ public sealed class PostFeedService
 		AddLocalComment(post, request.Author, request.Body, user);
 	}
 
+	// Deletes an owned post from the backend when enabled, then removes it locally.
 	public async Task<bool> DeletePostAsync(PostItem post, UserSession? user, CancellationToken cancellationToken = default)
 	{
 		if (!IsOwnPost(post, user))
@@ -179,6 +185,7 @@ public sealed class PostFeedService
 		return RemoveLocalPost(post);
 	}
 
+	// Deletes an owned comment from the backend when enabled, then removes it locally.
 	public async Task<bool> DeleteCommentAsync(PostItem post, CommentItem comment, UserSession? user, CancellationToken cancellationToken = default)
 	{
 		if (!IsOwnComment(comment, user))
@@ -205,6 +212,7 @@ public sealed class PostFeedService
 		return RemoveLocalComment(post, comment);
 	}
 
+	// Adds a comment to the local post and updates its comment count.
 	private void AddLocalComment(PostItem post, string author, string body, UserSession? user)
 	{
 		lock (gate)
@@ -225,6 +233,7 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Removes the matching post from the in-memory feed.
 	private bool RemoveLocalPost(PostItem post)
 	{
 		lock (gate)
@@ -233,6 +242,7 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Removes the matching local comment and updates the post's comment count.
 	private bool RemoveLocalComment(PostItem post, CommentItem comment)
 	{
 		lock (gate)
@@ -249,6 +259,7 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Uses a display name, username, or anonymous label for the comment author.
 	private static string ResolveDisplayName(UserSession? user)
 	{
 		if (user is null)
@@ -266,6 +277,7 @@ public sealed class PostFeedService
 			: user.Username.Trim();
 	}
 
+	// Pages backend comments when available, otherwise uses comments already held locally.
 	public async Task<CommentPage> GetCommentsAsync(PostItem post, int page, int pageSize = 10, CancellationToken cancellationToken = default)
 	{
 		page = Math.Max(1, page);
@@ -289,6 +301,7 @@ public sealed class PostFeedService
 
 	private bool CanUseBackend => backendOptions.UseBackendApi && httpClient.BaseAddress is not null;
 
+	// Loads backend posts and their comment counts, returning null if loading fails.
 	private async Task<List<PostItem>?> TryGetForumPostsAsync(CancellationToken cancellationToken)
 	{
 		try
@@ -311,6 +324,7 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Loads one backend post and its comment count, returning null if loading fails.
 	private async Task<PostItem?> TryGetForumPostAsync(string postKey, CancellationToken cancellationToken)
 	{
 		try
@@ -337,6 +351,7 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Creates a backend post and reports server validation errors without discarding the draft.
 	private async Task<PostItem> TryPostForumPostAsync(CreateForumPostRequest requestBody, string author, string accessToken, CancellationToken cancellationToken)
 	{
 		using var request = new HttpRequestMessage(HttpMethod.Post, "api/ForumPost")
@@ -394,6 +409,7 @@ public sealed class PostFeedService
 		};
 	}
 
+	// Tries both supported comment routes and filters out comments belonging to other posts.
 	private async Task<List<CommentItem>?> TryGetCommentsForPostAsync(int postId, CancellationToken cancellationToken)
 	{
 		var urls = new[]
@@ -427,6 +443,7 @@ public sealed class PostFeedService
 		return null;
 	}
 
+	// Sends an authenticated JSON POST and returns false if it fails.
 	private async Task<bool> TryPostToApiAsync<TRequest>(string relativeUrl, TRequest body, string accessToken, CancellationToken cancellationToken)
 	{
 		try
@@ -445,6 +462,7 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Tries the supplied DELETE routes until one succeeds.
 	private async Task<bool> TryDeleteFromAnyApiAsync(IEnumerable<string> relativeUrls, string accessToken, CancellationToken cancellationToken)
 	{
 		foreach (var relativeUrl in relativeUrls)
@@ -468,6 +486,7 @@ public sealed class PostFeedService
 		return false;
 	}
 
+	// Sorts comments newest first and returns the requested page with its total count.
 	private static CommentPage CreateCommentPage(IEnumerable<CommentItem> comments, int page, int pageSize)
 	{
 		var orderedComments = comments
@@ -486,12 +505,14 @@ public sealed class PostFeedService
 		};
 	}
 
+	// Splits comma-separated tags, trims them, and removes blanks and duplicates.
 	private static List<string> SplitTags(string value) => value
 		.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
 		.Where(tag => !string.IsNullOrWhiteSpace(tag))
 		.Distinct(StringComparer.OrdinalIgnoreCase)
 		.ToList();
 
+	// Places the current user's posts from the last three days first, then sorts by newest.
 	private static IReadOnlyList<PostItem> SortPosts(IEnumerable<PostItem> sourcePosts, UserSession? currentUser)
 	{
 		var highlightCutoff = DisplayTime.Now.AddDays(-3);
@@ -501,6 +522,7 @@ public sealed class PostFeedService
 			.ToList();
 	}
 
+	// Loads each backend post's comments to refresh its comments and count.
 	private async Task PopulateCommentCountsAsync(IEnumerable<PostItem> postsToPopulate, CancellationToken cancellationToken)
 	{
 		foreach (var post in postsToPopulate)
@@ -521,11 +543,13 @@ public sealed class PostFeedService
 		}
 	}
 
+	// Checks whether the current user wrote the post within the last three days.
 	public static bool IsRecentOwnPost(PostItem post, UserSession? currentUser)
 	{
 		return IsOwnPost(post, currentUser) && post.CreatedAtUtc >= DisplayTime.Now.AddDays(-3);
 	}
 
+	// Checks ownership using the user's ID or matching username.
 	public static bool IsOwnPost(PostItem post, UserSession? currentUser)
 	{
 		if (currentUser is null)
@@ -537,6 +561,7 @@ public sealed class PostFeedService
 			|| !string.IsNullOrWhiteSpace(currentUser.Username) && string.Equals(post.Author, currentUser.Username, StringComparison.OrdinalIgnoreCase);
 	}
 
+	// Checks comment ownership using the user's ID or matching username.
 	public static bool IsOwnComment(CommentItem comment, UserSession? currentUser)
 	{
 		if (currentUser is null)
@@ -548,6 +573,7 @@ public sealed class PostFeedService
 			|| !string.IsNullOrWhiteSpace(currentUser.Username) && string.Equals(comment.Author, currentUser.Username, StringComparison.OrdinalIgnoreCase);
 	}
 
+	// Supports numeric backend IDs and GUIDs used by locally created posts.
 	private static bool IsPostMatch(PostItem post, string postKey)
 	{
 		return string.Equals(post.RouteId, postKey, StringComparison.OrdinalIgnoreCase)
@@ -555,6 +581,7 @@ public sealed class PostFeedService
 			|| (int.TryParse(postKey, out var postId) && post.PostId == postId);
 	}
 
+	// Matches comments by backend comment ID or local GUID.
 	private static bool IsCommentMatch(CommentItem comment, CommentItem target)
 	{
 		return comment.CommentId > 0 && comment.CommentId == target.CommentId

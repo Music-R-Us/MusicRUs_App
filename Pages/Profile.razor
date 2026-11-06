@@ -180,6 +180,7 @@
 
 	private ForumProfile? CurrentProfile;
 
+	// Clears old route identifiers before applying new profile route parameters.
 	public override Task SetParametersAsync(ParameterView parameters)
 	{
 		// The router can reuse this component when switching between its routes.
@@ -188,6 +189,7 @@
 		return base.SetParametersAsync(parameters);
 	}
 
+	// Accepts only six-digit hex colors before using them in profile styles.
 	private static string SafeColor(string? value, string fallback)
 	{
 		return value is { Length: 7 }
@@ -199,6 +201,7 @@
 		$"--profile-start: {SafeColor(CurrentProfile?.PrimaryColor, "#2E0B05")}; " +
 		$"--profile-end: {SafeColor(CurrentProfile?.AccentColor, "#B82A14")};";
 
+	// Resolves the profile from either route identifier, then loads that user's collection.
 	protected override async Task OnParametersSetAsync()
 	{
 		await AuthSession.InitializeAsync();
@@ -239,6 +242,7 @@
 		}
 	}
 
+	// Signs out, displays confirmation, and opens the login page.
 	private async Task SignOutAsync()
 	{
 		await AuthSession.SignOutAsync();
@@ -248,6 +252,7 @@
 		Navigation.NavigateTo("/loginpick");
 	}
 
+	// Uses the loaded username, route username, or a user-ID fallback.
 	private string GetProfileUsernameFallback()
 	{
 		if (!string.IsNullOrWhiteSpace(CurrentProfile?.Username))

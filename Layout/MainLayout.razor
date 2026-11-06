@@ -86,12 +86,14 @@
     private bool isLightMode;
     private string headerColor = MusicRUs.Services.ProfileColorService.DefaultColor;
 
+    // Subscribes to authentication and profile-color changes for the header.
     protected override void OnInitialized()
     {
         AuthSession.Changed += OnAuthSessionChanged;
         ProfileColors.Changed += OnProfileColorChanged;
     }
 
+    // Loads the theme, session, and header after first render, then enables inactivity tracking.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -110,6 +112,7 @@
         }
     }
 
+    // Reloads header details and redraws the layout after authentication changes.
     private void OnAuthSessionChanged()
     {
         _ = InvokeAsync(async () =>
@@ -119,6 +122,7 @@
         });
     }
 
+    // Reloads the current user's saved header color and redraws the layout.
     private void OnProfileColorChanged()
     {
         _ = InvokeAsync(async () =>
@@ -131,6 +135,7 @@
         });
     }
 
+    // Switches the browser theme and displays the selected mode.
     private async Task ToggleThemeAsync()
     {
         var requestedTheme = isLightMode ? "dark" : "light";
@@ -143,6 +148,7 @@
         ToastService.Show($"Switched to {(isLightMode ? "light" : "dark")} mode.");
     }
 
+    // Loads the signed-in user's profile details for the navigation header.
     private async Task LoadHeaderProfileAsync()
     {
         if (AuthSession.CurrentUser is null || AuthSession.CurrentUser.UserId <= 0)
@@ -190,12 +196,14 @@
         ? "P"
         : HeaderDisplayName[0].ToString().ToUpperInvariant();
 
+    // Rejects blank values and the API's string placeholder for header details.
     private static bool IsMeaningfulProfileValue(string? value)
     {
         return !string.IsNullOrWhiteSpace(value)
             && !string.Equals(value.Trim(), "string", StringComparison.OrdinalIgnoreCase);
     }
 
+    // Unsubscribes from authentication and profile-color events.
     public void Dispose()
     {
         AuthSession.Changed -= OnAuthSessionChanged;

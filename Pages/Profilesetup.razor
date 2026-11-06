@@ -374,11 +374,14 @@
 	private string selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
 	private string SelectedHex => MusicRUs.Services.ProfileColorService.Normalize(selectedColor);
 	private static readonly string[] PresetColors = ["#66706C", "#2DD4BF", "#F97316", "#3B82F6", "#A855F7", "#EC4899", "#EAB308", "#FFFFFF"];
+	// Restores the default header color in the editor.
 	private void ResetColor() => selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
+	// Normalizes and stores the header color chosen in the editor.
 	private void PickColor(ChangeEventArgs args) => selectedColor = MusicRUs.Services.ProfileColorService.Normalize(args.Value?.ToString());
 	private string GradientPreviewStyle =>
 		$"--profile-start: {profileModel.PrimaryColor}; " +
 		$"--profile-end: {profileModel.AccentColor};";
+	// Restricts editing to the signed-in user and loads their profile and collection once.
 	protected override async Task OnParametersSetAsync()
 	{
 		var initialized = await AuthSession.InitializeAsync();
@@ -418,6 +421,7 @@
 		isReady = true;
 	}
 
+	// Saves the profile, collection edits, and browser color before returning to the profile.
 	private async Task HandleSaveAsync()
 	{
 		if (isSaving) return;
@@ -456,6 +460,7 @@
 		Navigation.NavigateTo($"/profile/{AuthSession.CurrentUser.UserId}");
 	}
 
+	// Opens the current user's profile, or login if they are signed out.
 	private void SkipSetup()
 	{
 		if (AuthSession.CurrentUser is null)
@@ -467,6 +472,7 @@
 		Navigation.NavigateTo($"/profile/{AuthSession.CurrentUser.UserId}");
 	}
 
+	// Builds the setup route, including the user's ID when available.
 	private static string GetProfileSetupUrl(int userId)
 	{
 		return userId > 0
@@ -474,6 +480,7 @@
 			: "/profile/setup";
 	}
 
+	// Selects a genre suggestion and adds it to the editor's tags if needed.
 	private void SelectGenre(string genre)
 	{
 		genreSearch = genre;
@@ -483,6 +490,7 @@
 		}
 	}
 
+	// Accepts a suggested genre as the favorite and adds its tag.
 	private void SetFavoriteGenre()
 	{
 		if (string.IsNullOrWhiteSpace(genreSearch))
@@ -503,12 +511,14 @@
 		}
 	}
 
+	// Removes a genre tag and clears the favorite if it used that genre.
 	private void RemoveGenreTag(string tag)
 	{
 		profileModel.Tags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
 		if (string.Equals(draftFavoriteGenre, tag, StringComparison.OrdinalIgnoreCase)) draftFavoriteGenre = string.Empty;
 	}
 
+	// Updates artist search text, clears the old selection, and schedules a search.
 	private async Task OnArtistSearchInputAsync(ChangeEventArgs args)
 	{
 		artistSearch = args.Value?.ToString() ?? string.Empty;
@@ -517,6 +527,7 @@
 		await DebounceArtistSearchAsync();
 	}
 
+	// Cancels the previous search and waits for typing to pause before fetching artists.
 	private async Task DebounceArtistSearchAsync()
 	{
 		CancelArtistSearchDebounce();
@@ -558,6 +569,7 @@
 		}
 	}
 
+	// Selects an artist suggestion and closes the search results.
 	private void SelectArtistResult(MusicArtist artist)
 	{
 		CancelArtistSearchDebounce();
@@ -568,6 +580,7 @@
 		formMessage = string.Empty;
 	}
 
+	// Adds the selected artist to the draft favorites without duplicates.
 	private void AddFavoriteArtist()
 	{
 		if (artistResult is null || artistResult.Id <= 0 || profileModel.FavoriteArtists.Any(artist => artist.Id == artistResult.Id))
@@ -580,6 +593,7 @@
 		artistSearch = string.Empty;
 	}
 
+	// Removes a favorite artist and clears any matching search selection.
 	private void RemoveFavoriteArtist(int artistId)
 	{
 		profileModel.FavoriteArtists.RemoveAll(artist => artist.Id == artistId);
@@ -590,6 +604,7 @@
 		}
 	}
 
+	// Updates album search text, clears the old selection, and schedules a search.
 	private async Task OnAlbumSearchInputAsync(ChangeEventArgs args)
 	{
 		albumSearch = args.Value?.ToString() ?? string.Empty;
@@ -598,6 +613,7 @@
 		await DebounceAlbumSearchAsync();
 	}
 
+	// Cancels the previous search and waits for typing to pause before fetching albums.
 	private async Task DebounceAlbumSearchAsync()
 	{
 		CancelAlbumSearchDebounce();
@@ -670,6 +686,7 @@
 		}
 	}
 
+	// Selects an album suggestion and closes the search results.
 	private void SelectAlbumResult(MusicAlbum album)
 	{
 		CancelAlbumSearchDebounce();
@@ -680,6 +697,7 @@
 		formMessage = string.Empty;
 	}
 
+	// Adds the selected album to the draft favorites without duplicates.
 	private void AddFavoriteAlbum()
 	{
 		if (albumResult is null || albumResult.Id <= 0 || profileModel.FavoriteAlbums.Any(album => album.Id == albumResult.Id))
@@ -690,11 +708,13 @@
 		profileModel.FavoriteAlbums.Add(albumResult);
 	}
 
+	// Removes an album from the draft favorites.
 	private void RemoveFavoriteAlbum(int albumId)
 	{
 		profileModel.FavoriteAlbums.RemoveAll(album => album.Id == albumId);
 	}
 
+	// Stages the selected album and media format for addition to the collection.
 	private void AddCollectionAlbum()
 	{
 		if (selectedCollectionFormat is null || !collectionLoaded || albumResult is null || profileModel.MusicCollection.Any(album => album.Id == albumResult.Id))
@@ -706,12 +726,14 @@
 		newCollectionFormats[albumResult.Id] = selectedCollectionFormat.Value;
 	}
 
+	// Removes a staged collection album and its media-format choice.
 	private void RemoveCollectionAlbum(int albumId)
 	{
 		profileModel.MusicCollection.RemoveAll(album => album.Id == albumId);
 		newCollectionFormats.Remove(albumId);
 	}
 
+	// Saves collection edits only if the original collection loaded successfully.
 	private async Task<bool> SaveCollectionChangesAsync()
 	{
 		if (!collectionLoaded)
@@ -763,6 +785,7 @@
 
 		public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+		// Creates editable form values from the saved profile, falling back to session defaults.
 		public static ProfileSetupModel FromProfile(ForumProfile? profile, UserSession user, int userId)
 		{
 			return new ProfileSetupModel
@@ -789,6 +812,7 @@
 			};
 		}
 
+		// Builds a profile from the form, trimming text and removing duplicate tags.
 		public ForumProfile ToForumProfile()
 		{
 			return new ForumProfile
@@ -814,12 +838,14 @@
 		}
 	}
 
+	// Cancels pending artist and album searches when leaving the editor.
 	public void Dispose()
 	{
 		CancelArtistSearchDebounce();
 		CancelAlbumSearchDebounce();
 	}
 
+	// Cancels the pending artist search and clears its active token reference.
 	private void CancelArtistSearchDebounce()
 	{
 		var debounce = artistSearchDebounce;
@@ -839,6 +865,7 @@
 
 	}
 
+	// Cancels the pending album search and clears its active token reference.
 	private void CancelAlbumSearchDebounce()
 	{
 		var debounce = albumSearchDebounce;

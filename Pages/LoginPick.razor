@@ -126,6 +126,7 @@
 	private readonly LoginModel loginModel = new();
 	private readonly SignupModel signupModel = new();
 
+	// Renders the Google sign-in button when the login or signup mode changes.
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		if (renderedGoogleMode == currentMode)
@@ -143,18 +144,21 @@
 			: "signup_with");
 	}
 
+	// Switches to the login form and clears the previous message.
 	private void ShowLogin()
 	{
 		formMessage = string.Empty;
 		currentMode = AuthMode.Login;
 	}
 
+	// Switches to the signup form and clears the previous message.
 	private void ShowSignup()
 	{
 		formMessage = string.Empty;
 		currentMode = AuthMode.Signup;
 	}
 
+	// Signs in with the entered credentials and redirects or shows the returned error.
 	private async Task HandleLoginSubmit()
 	{
 		isSubmitting = true;
@@ -174,6 +178,7 @@
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
 
+	// Creates an account from the form and redirects or shows the returned error.
 	private async Task HandleSignupSubmit()
 	{
 		isSubmitting = true;
@@ -199,6 +204,7 @@
 	}
 
 	[JSInvokable]
+	// Receives Google's token from JavaScript and completes login or displays an error.
 	public async Task OnGoogleToken(string idToken)
 	{
 		isSubmitting = true;
@@ -220,6 +226,7 @@
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
 
+	// Sends users to their profile or setup depending on whether their profile is configured.
 	private async Task<string> GetPostLoginUrlAsync(UserSession user)
 	{
 		if (await AuthSession.IsForumProfileSetupCompleteAsync(user))
@@ -230,6 +237,7 @@
 		return GetProfileSetupUrl(user);
 	}
 
+	// Builds the setup route, including the user's ID when available.
 	private static string GetProfileSetupUrl(UserSession user)
 	{
 		return user.UserId > 0
@@ -237,6 +245,7 @@
 			: "/profile/setup";
 	}
 
+	// Releases the .NET object reference used by Google's JavaScript callback.
 	public void Dispose()
 	{
 		dotNetReference?.Dispose();

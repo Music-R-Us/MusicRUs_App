@@ -5,6 +5,7 @@ namespace MusicRUs.Services;
 
 internal static class PostFeedMapper
 {
+	// Accepts a bare post array or one wrapped in a supported API list property.
 	public static List<PostItem> ReadPostList(JsonElement root)
 	{
 		var array = GetJsonArray(root, "items", "posts", "forumPosts", "$values") ?? root;
@@ -20,6 +21,7 @@ internal static class PostFeedMapper
 			.ToList();
 	}
 
+	// Maps alternate API field names and nested music details into the UI post model.
 	public static PostItem? ReadPost(JsonElement element)
 	{
 		if (element.ValueKind != JsonValueKind.Object)
@@ -102,6 +104,7 @@ internal static class PostFeedMapper
 		return post;
 	}
 
+	// Reads a named field from a nested artist, album, or track object.
 	private static string? ReadMusicName(JsonElement element, string property, params string[] names)
 	{
 		return JsonElementReader.TryGetProperty(element, property, out var music)
@@ -110,6 +113,7 @@ internal static class PostFeedMapper
 			: null;
 	}
 
+	// Normalizes comment response shapes and field names for display.
 	public static List<CommentItem> ReadCommentList(JsonElement root)
 	{
 		var array = GetJsonArray(root, "items", "comments", "$values") ?? root;
@@ -134,6 +138,7 @@ internal static class PostFeedMapper
 			.ToList();
 	}
 
+	// Reads tags from a supported list response and removes blank or duplicate names.
 	public static List<string> ReadPostTagList(JsonElement root)
 	{
 		var array = GetJsonArray(root, "items", "tags", "postTags", "$values") ?? root;
@@ -150,6 +155,7 @@ internal static class PostFeedMapper
 			.ToList();
 	}
 
+	// Reads a tag supplied as either a string or an object.
 	private static string? ReadPostTag(JsonElement element)
 	{
 		return element.ValueKind switch
@@ -160,6 +166,7 @@ internal static class PostFeedMapper
 		};
 	}
 
+	// Finds a bare array or an array stored under one of the supplied property names.
 	private static JsonElement? GetJsonArray(JsonElement element, params string[] propertyNames)
 	{
 		if (element.ValueKind == JsonValueKind.Array)
@@ -183,6 +190,7 @@ internal static class PostFeedMapper
 		return null;
 	}
 
+	// Returns the first valid GUID found under the supplied property names.
 	private static Guid? GetJsonGuid(JsonElement element, params string[] propertyNames)
 	{
 		foreach (var propertyName in propertyNames)
@@ -196,6 +204,7 @@ internal static class PostFeedMapper
 		return null;
 	}
 
+	// Returns the first valid timestamp found under the supplied property names.
 	private static DateTimeOffset? GetJsonDate(JsonElement element, params string[] propertyNames)
 	{
 		foreach (var propertyName in propertyNames)
@@ -209,6 +218,7 @@ internal static class PostFeedMapper
 		return null;
 	}
 
+	// Reads a string array or splits a comma-separated string into tags.
 	private static List<string> GetJsonStringList(JsonElement element, params string[] propertyNames)
 	{
 		foreach (var propertyName in propertyNames)
@@ -236,6 +246,7 @@ internal static class PostFeedMapper
 		return [];
 	}
 
+	// Splits comma-separated tags, trims them, and removes blanks and duplicates.
 	private static List<string> SplitTags(string value) => value
 		.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
 		.Where(tag => !string.IsNullOrWhiteSpace(tag))

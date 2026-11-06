@@ -192,6 +192,7 @@
     private MusicAlbum? searchedAlbum;
     private List<MusicCollectionItem> collection = [];
 
+    // Loads the collection after the first render, when browser session storage is available.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
@@ -213,6 +214,7 @@
         StateHasChanged();
     }
 
+    // Searches for one album and updates the search result and loading state.
     private async Task SearchAlbumAsync()
     {
         var query = albumSearchQuery.Trim();
@@ -230,6 +232,7 @@
         isSearching = false;
     }
 
+    // Runs the search when the user presses Enter.
     private async Task OnSearchKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
@@ -238,6 +241,7 @@
         }
     }
 
+    // Adds the search result in the selected format, then reloads the collection.
     private async Task AddSearchedAlbumAsync()
     {
         if (searchedAlbum is null || AuthSession.CurrentUser?.UserId is not > 0)
@@ -258,6 +262,7 @@ selectedFormat);
         }
     }
 
+    // Deletes the owned entry and removes it from the displayed collection after success.
     private async Task RemoveItemAsync(MusicCollectionItem item)
     {
         if (AuthSession.CurrentUser?.UserId is not > 0)

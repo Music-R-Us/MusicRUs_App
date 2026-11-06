@@ -5,6 +5,9 @@ using MusicRUs.Models;
 
 namespace MusicRUs.Services;
 
+/// <summary>
+/// Manages the browser session and passes the current user to profile and music services.
+/// </summary>
 public sealed class AuthSessionService
 {
 	private readonly IJSRuntime jsRuntime;
@@ -15,6 +18,9 @@ public sealed class AuthSessionService
 	private readonly MusicCatalogService musicCatalog;
 	private bool initialized;
 
+	/// <summary>
+	/// Connects browser session storage with authentication, profile, user, and catalog services.
+	/// </summary>
 	public AuthSessionService(
 		IJSRuntime jsRuntime,
 		HttpClient httpClient,
@@ -32,12 +38,24 @@ public sealed class AuthSessionService
 		this.musicCatalog = musicCatalog;
 	}
 
+	/// <summary>
+	/// Notifies components when the session or a saved forum profile changes.
+	/// </summary>
 	public event Action? Changed;
 
+	/// <summary>
+	/// Holds the current browser session, or null when signed out.
+	/// </summary>
 	public UserSession? CurrentUser { get; private set; }
 
+	/// <summary>
+	/// Reports whether a user session is currently loaded.
+	/// </summary>
 	public bool IsAuthenticated => CurrentUser is not null;
 
+	/// <summary>
+	/// Restores the browser session once; returns false if JavaScript is not available yet.
+	/// </summary>
 	public async Task<bool> InitializeAsync()
 	{
 		if (initialized)
@@ -59,6 +77,9 @@ public sealed class AuthSessionService
 		return true;
 	}
 
+	/// <summary>
+	/// Uses backend credentials when enabled, otherwise creates a local browser session.
+	/// </summary>
 	public async Task<AuthResult> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
@@ -89,6 +110,9 @@ public sealed class AuthSessionService
 		return AuthResult.Success(CurrentUser!);
 	}
 
+	/// <summary>
+	/// Creates an account and signs in after a successful response.
+	/// </summary>
 	public async Task<AuthResult> SignupAsync(SignupRequest request, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
@@ -116,6 +140,9 @@ public sealed class AuthSessionService
 		return AuthResult.Success(CurrentUser!);
 	}
 
+	/// <summary>
+	/// Validates the Google token and exchanges it for a signed-in backend session.
+	/// </summary>
 	public async Task<AuthResult> GoogleLoginAsync(string idToken, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
@@ -139,6 +166,9 @@ public sealed class AuthSessionService
 		return await CompleteLoginAsync(result.User, cancellationToken);
 	}
 
+	/// <summary>
+	/// Creates and saves a local session for the supplied username.
+	/// </summary>
 	public async Task SignInAsync(string username, string? displayName = null)
 	{
 		await InitializeAsync();
@@ -146,6 +176,9 @@ public sealed class AuthSessionService
 		await SaveSessionAsync(UserSession.Create(username, displayName));
 	}
 
+	/// <summary>
+	/// Clears the browser session and notifies components that the user signed out.
+	/// </summary>
 	public async Task SignOutAsync()
 	{
 		await InitializeAsync();
@@ -154,29 +187,44 @@ public sealed class AuthSessionService
 		Changed?.Invoke();
 	}
 
+	/// <summary>
+	/// Loads a forum profile by username using the current session.
+	/// </summary>
 	public async Task<ForumProfile?> GetProfileAsync(string username, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await forumProfiles.GetProfileAsync(username, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Loads a user's forum profile using the current session.
+	/// </summary>
 	public async Task<ForumProfile?> GetForumProfileAsync(int userId, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await forumProfiles.GetForumProfileAsync(userId, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Checks whether the user has personalized their forum profile.
+	/// </summary>
 	public async Task<bool> IsForumProfileSetupCompleteAsync(UserSession user, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await forumProfiles.IsForumProfileSetupCompleteAsync(user, cancellationToken);
 	}
+	/// <summary>
+	/// Loads public user details using the current session.
+	/// </summary>
 	public async Task<UserSession?> GetUserAsync(int userId, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await userLookup.GetUserAsync(userId, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Saves the forum profile and notifies subscribers after a successful save.
+	/// </summary>
 	public async Task<bool> SaveForumProfileAsync(ForumProfile profile, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
@@ -189,12 +237,18 @@ public sealed class AuthSessionService
 		return saved;
 	}
 
+	/// <summary>
+	/// Loads the available genres using the current session.
+	/// </summary>
 	public async Task<List<GenreOption>> GetGenresAsync(CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await apiClient.GetAsync<List<GenreOption>>("api/Genre", CurrentUser?.AccessToken, cancellationToken) ?? [];
 	}
 
+	/// <summary>
+	/// Searches the catalog for artists matching the supplied text.
+	/// </summary>
 	public async Task<List<MusicArtist>> SearchArtistsAsync(string query, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
@@ -202,6 +256,9 @@ public sealed class AuthSessionService
 		return await musicCatalog.SearchArtistsAsync(query, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Searches the catalog for albums matching the supplied text.
+	/// </summary>
 	public async Task<List<MusicAlbum>> SearchAlbumsAsync(string query, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
@@ -209,13 +266,22 @@ public sealed class AuthSessionService
 		return await musicCatalog.SearchAlbumsAsync(query, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Loads the selected album's tracks.
+	/// </summary>
 	public async Task<List<MusicTrack>> GetAlbumTracksAsync(int albumId, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await musicCatalog.GetAlbumTracksAsync(albumId, CurrentUser, cancellationToken);
 	}
+	/// <summary>
+	/// Exposes the latest collection operation's error message from the catalog service.
+	/// </summary>
 	public string? CollectionError => musicCatalog.CollectionError;
 
+	/// <summary>
+	/// Saves the collection additions and removals made in the editor.
+	/// </summary>
 	public async Task<bool> SaveCollectionChangesAsync(int userId, IReadOnlyCollection<MusicCollectionItem> original,
 		IReadOnlyCollection<MusicAlbum> desired, IReadOnlyDictionary<int, MediaFormat> formats, CancellationToken cancellationToken = default)
 	{
@@ -223,40 +289,62 @@ public sealed class AuthSessionService
 		return await musicCatalog.SaveCollectionChangesAsync(userId, original, desired, formats, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Loads the user's owned music collection using the current session.
+	/// </summary>
 	public async Task<List<MusicCollectionItem>> GetCollectionAsync(int userId, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await musicCatalog.GetCollectionAsync(userId, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Restores the session, then asks the catalog service to save an owned album for the user.
+	/// Returns true when saved; CollectionError contains details when the catalog rejects the request.
+	/// </summary>
 	public async Task<bool> AddToCollectionAsync(int userId, int albumId, CancellationToken cancellationToken = default, MediaFormat? format = null)
 	{
 		await InitializeAsync();
 		return await musicCatalog.AddToCollectionAsync(userId, albumId, CurrentUser, cancellationToken, format);
 	}
 
+	/// <summary>
+	/// Removes an owned collection entry for the user.
+	/// </summary>
 	public async Task<bool> RemoveFromCollectionAsync(int userId, int collectionId, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await musicCatalog.RemoveFromCollectionAsync(userId, collectionId, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Loads the artist and their albums using the current session.
+	/// </summary>
 	public async Task<(MusicArtist? Artist, List<MusicAlbum> Albums)> GetArtistDiscographyAsync(int artistId, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await musicCatalog.GetArtistDiscographyAsync(artistId, CurrentUser, cancellationToken);
 	}
+	/// <summary>
+	/// Returns the first album matching the search text.
+	/// </summary>
 	public async Task<MusicAlbum?> SearchAlbumAsync(string title, CancellationToken cancellationToken = default)
 	{
 		await InitializeAsync();
 		return await musicCatalog.SearchAlbumAsync(title, CurrentUser, cancellationToken);
 	}
 
+	/// <summary>
+	/// Recognizes the error raised when browser interop is called before it is available.
+	/// </summary>
 	private static bool IsPrerenderInteropException(InvalidOperationException exception)
 	{
 		return exception.Message.Contains("JavaScript interop calls cannot be issued at this time", StringComparison.Ordinal);
 	}
 
+	/// <summary>
+	/// Saves the authenticated session, calls the profile hook, and returns a successful login result.
+	/// </summary>
 	private async Task<AuthResult> CompleteLoginAsync(UserSession session, CancellationToken cancellationToken)
 	{
 		await SaveSessionAsync(session);
@@ -264,6 +352,9 @@ public sealed class AuthSessionService
 		return AuthResult.Success(CurrentUser!);
 	}
 
+	/// <summary>
+	/// Stores a normalized session in the browser and notifies subscribed components.
+	/// </summary>
 	private async Task SaveSessionAsync(UserSession session)
 	{
 		if (string.IsNullOrWhiteSpace(session.Username))
@@ -276,6 +367,9 @@ public sealed class AuthSessionService
 		Changed?.Invoke();
 	}
 
+	/// <summary>
+	/// Chooses email or username login and maps a successful response into a session.
+	/// </summary>
 	private async Task<UserSession?> TryLoginUserAsync(LoginRequest request, CancellationToken cancellationToken)
 	{
 		try
@@ -304,6 +398,9 @@ public sealed class AuthSessionService
 		}
 	}
 
+	/// <summary>
+	/// Submits signup details and returns either the new session or a readable error.
+	/// </summary>
 	private async Task<AuthResult> TryCreateUserAsync(SignupRequest request, CancellationToken cancellationToken)
 	{
 		try
@@ -338,6 +435,9 @@ public sealed class AuthSessionService
 		}
 	}
 
+	/// <summary>
+	/// Exchanges a Google ID token for a session and translates backend errors.
+	/// </summary>
 	private async Task<AuthResult> TryGoogleLoginAsync(string idToken, CancellationToken cancellationToken)
 	{
 		try
@@ -370,6 +470,9 @@ public sealed class AuthSessionService
 		}
 	}
 
+	/// <summary>
+	/// Accepts both nested and flat login responses, including alternate field names.
+	/// </summary>
 	private static UserSession CreateSessionFromLoginJson(JsonElement root, string fallbackUsername)
 	{
 		var userElement = root.TryGetProperty("user", out var nestedUser) ? nestedUser : root;
@@ -394,6 +497,9 @@ public sealed class AuthSessionService
 			userId ?? 0);
 	}
 
+	/// <summary>
+	/// Uses the returned username, the email's local part, or the supplied fallback.
+	/// </summary>
 	private static string ResolveUsername(string? username, string? email, string fallbackUsername)
 	{
 		if (!string.IsNullOrWhiteSpace(username))
@@ -410,6 +516,9 @@ public sealed class AuthSessionService
 		return fallbackUsername;
 	}
 
+	/// <summary>
+	/// Combines field validation errors or falls back to the server's general message.
+	/// </summary>
 	private static async Task<string?> ReadServerMessageAsync(HttpResponseMessage response, CancellationToken cancellationToken)
 	{
 		var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -459,7 +568,13 @@ public sealed class AuthSessionService
 
 public sealed record AuthResult(bool IsSuccess, UserSession? User, string? ErrorMessage)
 {
+	/// <summary>
+	/// Creates a successful authentication result containing the signed-in user.
+	/// </summary>
 	public static AuthResult Success(UserSession user) => new(true, user, null);
 
+	/// <summary>
+	/// Creates a failed authentication result containing an error message.
+	/// </summary>
 	public static AuthResult Failure(string errorMessage) => new(false, null, errorMessage);
 }

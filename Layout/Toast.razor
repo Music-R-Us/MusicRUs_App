@@ -18,16 +18,19 @@
     private CancellationTokenSource? hideTimer;
     private bool disposed;
 
+    // Subscribes to toast messages from the shared toast service.
     protected override void OnInitialized()
     {
         ToastService.OnShow += HandleShow;
     }
 
+    // Schedules the toast update on Blazor's rendering context.
     private void HandleShow(string text)
     {
         _ = InvokeAsync(() => ShowAsync(text));
     }
 
+    // Displays a message for three seconds, restarting the timer for a new message.
     private async Task ShowAsync(string text)
     {
         if (disposed)
@@ -63,6 +66,7 @@
         }
     }
 
+    // Unsubscribes from toast events and cancels the hide timer.
     public void Dispose()
     {
         disposed = true;
