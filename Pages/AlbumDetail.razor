@@ -1,0 +1,144 @@
+@page "/music/album/{AlbumId:int}"
+@layout MainLayout
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject MusicRUs.Services.BackendApiClient ApiClient
+
+<PageTitle>@(album?.Title ?? "Album") – MusicRUs</PageTitle>
+
+@if (isLoading)
+{
+    <p role="status" class="py-12 text-center text-porcelain-50/60">Loading album...</p>
+}
+else if (album is null)
+{
+    <div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-8 text-center">
+        <p role="alert" class="text-porcelain-50/60">@errorMessage</p>
+        <a href="@BackUrl" class="mx-auto rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm text-porcelain-50 transition hover:bg-granite-800">&larr; @BackLabel</a>
+    </div>
+}
+else
+{
+    <section class="grid w-full gap-6">
+        <a href="@BackUrl" class="w-fit text-sm text-pine-teal-300 transition hover:text-pine-teal-200"> @BackLabel</a>
+        <div class="overflow-hidden rounded-3xl border border-granite-800/80 bg-coffee-bean-950/60">
+            <div class="flex flex-col gap-6 p-6 sm:flex-row sm:items-end sm:p-8">
+                @if (!string.IsNullOrWhiteSpace(album.ImageUrl))
+                {
+                    <img src="@album.ImageUrl" alt="@($"{album.Title} album cover")" class="h-48 w-48 shrink-0 rounded-2xl object-cover shadow-lg shadow-black/40 sm:h-56 sm:w-56" />
+                }
+                else
+                {
+                    <div class="flex h-48 w-48 shrink-0 items-center justify-center rounded-2xl bg-fiery-terracotta-800/60 text-6xl text-porcelain-50/60 sm:h-56 sm:w-56" aria-label="No album cover">♪</div>
+                }
+                <div class="grid min-w-0 gap-3">
+                    <p class="text-xl font-semibold text-porcelain-50">Album</p>
+                    <h1 class="wrap-break-words text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-6xl">@album.Title</h1>
+                    <div class="flex flex-wrap gap-x-3 gap-y-1 text-porcelain-50/80">
+                        @foreach (var artist in album.Artists)
+                        {
+                            var artistId = artist.ArtistId > 0 ? artist.ArtistId : artist.Id;
+                            var artistName = string.IsNullOrWhiteSpace(artist.ArtistName) ? artist.Name : artist.ArtistName;
+                            @if (artistId > 0)
+                            {
+                                <a href="/music/artist/@artistId" class="font-semibold transition hover:text-pine-teal-300">@artistName</a>
+                            }
+                            else
+                            {
+                                <span>@artistName</span>
+                            }
+                        }
+                    </div>
+                    <div class="flex flex-wrap gap-3 text-sm text-porcelain-50/50">
+                        @if (!string.IsNullOrWhiteSpace(album.ReleaseDate))
+                        {
+                            <span>@album.ReleaseDate</span>
+                        }
+                        <span>@tracks.Count track@(tracks.Count == 1 ? "" : "s")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60">
+            <h2 class="border-b border-granite-800/60 p-5 text-xl font-semibold text-porcelain-50">Tracks</h2>
+            @if (tracks.Count == 0)
+            {
+                <p class="p-6 text-sm text-porcelain-50/60">No tracks available for this album yet.</p>
+            }
+            else
+            {
+                <ol class="divide-y divide-granite-800/60">
+                    @foreach (var track in tracks)
+                    {
+                        <li class="flex items-center gap-4 px-5 py-4 transition hover:bg-granite-900/40">
+                            <span class="w-8 shrink-0 text-right text-sm tabular-nums text-porcelain-50/40">@(track.TrackNumber?.ToString() ?? "–")</span>
+                            <div class="grid min-w-0 flex-1 gap-1">
+                                <div class="flex items-center gap-2">
+                                    <p class="wrap-break-words font-medium text-porcelain-50">@track.Title</p>
+                                    @if (track.Explicit == true)
+                                    {
+                                        <span title="Explicit" aria-label="Explicit" class="rounded bg-granite-700 px-1 text-xs text-porcelain-50/80">E</span>
+                                    }
+                                </div>
+                                @if (track.Artists.Count > 0)
+                                {
+                                    <p class="truncate text-sm text-porcelain-50/50">@string.Join(", ", track.Artists.Select(artist => artist.Name))</p>
+                                }
+                                @if (showDiscNumbers)
+                                {
+                                    <p class="text-xs text-porcelain-50/40">Disc @(track.DiscNumber ?? 1)</p>
+                                }
+                            </div>
+                            <span class="shrink-0 text-sm tabular-nums text-porcelain-50/40">@track.DurationFormatted</span>
+                        </li>
+                    }
+                </ol>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public int AlbumId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "fromArtistId")]
+    public int? FromArtistId { get; set; }
+
+    private int BackArtistId => FromArtistId is > 0 ? FromArtistId.Value : album?.ArtistId ?? 0;
+    private string BackUrl => BackArtistId > 0 ? $"/music/artist/{BackArtistId}" : "/music";
+    private string BackLabel => BackArtistId > 0 ? "Back to artist" : "Back to Music";
+
+    private MusicAlbum? album;
+    private List<MusicTrack> tracks = [];
+    private bool isLoading = true;
+    private bool showDiscNumbers;
+    private string errorMessage = string.Empty;
+    private int loadVersion;
+
+    // Reloads details when navigating between albums and ignores outdated responses.
+    protected override async Task OnParametersSetAsync()
+    {
+        var version = ++loadVersion;
+        var requestedId = AlbumId;
+        isLoading = true;
+        album = null;
+        tracks = [];
+        showDiscNumbers = false;
+        await AuthSession.InitializeAsync();
+        if (version != loadVersion) return;
+
+        var result = await ApiClient.GetWithStatusAsync<MusicAlbum>(
+            $"api/Album/{requestedId}", AuthSession.CurrentUser?.AccessToken);
+        if (version != loadVersion) return;
+
+        album = result.Value;
+        errorMessage = result.StatusCode == System.Net.HttpStatusCode.NotFound
+            ? "Album not found."
+            : "Could not load this album. Please try again.";
+        tracks = (album?.Tracks ?? []).OrderBy(track => track.DiscNumber ?? 1)
+            .ThenBy(track => track.TrackNumber ?? int.MaxValue).ToList();
+        showDiscNumbers = tracks.Select(track => track.DiscNumber ?? 1).Distinct().Count() > 1;
+        isLoading = false;
+    }
+}

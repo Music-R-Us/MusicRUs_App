@@ -149,7 +149,9 @@
                                 class="group relative flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 transition hover:border-granite-700">
                                 @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
                                 {
-                                    <img src="@item.ImageUrl" alt="@item.AlbumTitle" class="h-14 w-14 rounded-lg object-cover" />
+                                    <a href="/music/album/@item.Album?.Id">
+                                        <img src="@item.ImageUrl" alt="@item.AlbumTitle" class="h-14 w-14 rounded-lg object-cover" />
+                                    </a>
                                 }
                                 else
                                 {
@@ -159,10 +161,10 @@
                                     </div>
                                 }
                                 <div class="grid gap-0.5 min-w-0 flex-1">
-                                    <p class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</p>
+                                    <a href="/music/album/@item.Album?.Id" class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</a>
                                     @if (!string.IsNullOrWhiteSpace(item.ArtistNames))
                                     {
-                                        <p class="truncate text-sm text-porcelain-50/80">@item.ArtistNames</p>
+                                        <a href="/music/artist/@item.Album?.ArtistId" class="truncate text-sm text-porcelain-50/80">@item.ArtistNames</a>
                                     }
                                     @if (item.AddedAt.HasValue)
                                     {
@@ -250,8 +252,7 @@
         }
 
         var albumTitle = searchedAlbum.Title;
-        var ok = await AuthSession.AddToCollectionAsync(AuthSession.CurrentUser.UserId, searchedAlbum.Id, format:
-selectedFormat);
+        var ok = await AuthSession.AddToCollectionAsync(AuthSession.CurrentUser.UserId, searchedAlbum.Id, format: selectedFormat);
         if (ok)
         {
             collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId);

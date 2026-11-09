@@ -50,122 +50,140 @@
 
 		@if (CurrentProfile is not null)
 		{
-			<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
-				<div>
-					<p class="text-xl font-semibold text-porcelain-50">Profile Information</p>
-				</div>
-				<div class="grid gap-2">
-					<p class="max-w-2xl text-base leading-7 text-porcelain-50/80 sm:text-lg">
-						@Bio
-					</p>
-				</div>
-				<div class="grid gap-2 text-sm sm:grid-cols-2">
-					<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
-						<p class="text-porcelain-50/60">Website</p>
-						<a href="@CurrentProfile.WebsiteUrl" target="_blank" rel="noopener noreferrer" class="text-xl font-semibold text-porcelain-50">@(string.IsNullOrWhiteSpace(CurrentProfile.WebsiteUrl) ? "Not set" : CurrentProfile.WebsiteUrl)</a>
+			@if (CurrentProfile.IsPublic == true || CurrentProfile.UserId == AuthSession.CurrentUser?.UserId)
+			{
+				<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
+					<div>
+						<p class="text-xl font-semibold text-porcelain-50">Profile Information</p>
 					</div>
-					<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
-						<p class="text-porcelain-50/60">Visibility</p>
-						<p class="text-xl font-semibold text-porcelain-50">@(CurrentProfile.IsPublic ? "Public" : "Private")</p>
+					<div class="grid gap-2">
+						<p class="max-w-2xl text-base leading-7 text-porcelain-50/80 sm:text-lg">
+							@Bio
+						</p>
+					</div>
+					<div class="grid gap-2 text-sm sm:grid-cols-2">
+						<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
+							<p class="text-porcelain-50/60">Website</p>
+							<a href="@CurrentProfile.WebsiteUrl" target="_blank" rel="noopener noreferrer" class="text-xl font-semibold text-porcelain-50">@(string.IsNullOrWhiteSpace(CurrentProfile.WebsiteUrl) ? "Not set" : CurrentProfile.WebsiteUrl)</a>
+						</div>
+						<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
+							<p class="text-porcelain-50/60">Visibility</p>
+							<p class="text-xl font-semibold text-porcelain-50">@(CurrentProfile.IsPublic ? "Public" : "Private")</p>
+						</div>
 					</div>
 				</div>
-			</div>
 
-			<div class="grid gap-6 sm:grid-cols-2">
-				<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
-					<h2 class="text-xl font-semibold text-porcelain-50">Favorite artists</h2>
-					@if (CurrentProfile.FavoriteArtists.Count == 0)
-					{
-						<p class="text-sm text-porcelain-50/70">No favorite artists yet.</p>
-					}
-					@foreach (var artist in CurrentProfile.FavoriteArtists)
-					{
-						<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
-							@if (!string.IsNullOrWhiteSpace(artist.ImageUrl))
-							{
-								<img src="@artist.ImageUrl" alt="" loading="lazy" class="h-14 w-14 rounded-full object-cover" />
-							}
-							<p class="font-semibold text-porcelain-50">@artist.Name</p>
-						</div>
-					}
-				</div>
-				<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
-					<h2 class="text-xl font-semibold text-porcelain-50">Favorite albums</h2>
-					@if (CurrentProfile.FavoriteAlbums.Count == 0)
-					{
-						<p class="text-sm text-porcelain-50/70">No favorite albums yet.</p>
-					}
-					@foreach (var album in CurrentProfile.FavoriteAlbums)
-					{
-						<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
-							@if (!string.IsNullOrWhiteSpace(album.ImageUrl))
-							{
-								<img src="@album.ImageUrl" alt="" loading="lazy" class="h-14 w-14 rounded-lg object-cover" />
-							}
-							<div>
-								<p class="font-semibold text-porcelain-50">@album.Title</p>
-								<p class="text-sm text-porcelain-50/70">@album.ArtistName</p>
-							</div>
-						</div>
-					}
-
-				</div>
-				<div class="grid content-start gap-4 self-start rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80 sm:col-span-2">
-					@if (Collection.Count > 0)
-					{
-						<div class="grid gap-3">
-							<div class="flex items-center justify-between">
-								<p class="text-xl font-semibold text-porcelain-50">Music collection</p>
-								@if (CanEditProfile)
+				<div class="grid gap-6 sm:grid-cols-2">
+					<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+						<h2 class="text-xl font-semibold text-porcelain-50">Favorite artists</h2>
+						@if (CurrentProfile.FavoriteArtists.Count == 0)
+						{
+							<p class="text-sm text-porcelain-50/70">No favorite artists yet.</p>
+						}
+						@foreach (var artist in CurrentProfile.FavoriteArtists)
+						{
+							<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
+								@if (!string.IsNullOrWhiteSpace(artist.ImageUrl))
 								{
-									<a href="/collection" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
-								}
-							</div>
-							<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-								@foreach (var item in Collection.Take(5))
-								{
-									<div class="flex items-center gap-3 rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
-										@if (!string.IsNullOrWhiteSpace(item.ImageUrl))
-										{
-											<img src="@item.ImageUrl" alt="@item.AlbumTitle" class="h-12 w-12 rounded-lg object-cover" />
-										}
-										else
-										{
-											<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-granite-800 text-xs text-porcelain-50/40">♪</div>
-										}
-										<div class="min-w-0">
-											<p class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</p>
-											@if (!string.IsNullOrWhiteSpace(item.ArtistNames))
-											{
-												<p class="truncate text-sm text-porcelain-50/60">@item.ArtistNames</p>
-											}
-										</div>
-									</div>
-								}
-							</div>
-							@if (Collection.Count > 5)
-							{
-								@if (CanEditProfile)
-								{
-									<a href="/collection" class="flex items-center gap-2 rounded-xl border border-granite-700/60 bg-granite-900/40 px-4 py-3 text-sm text-porcelain-50/60 transition hover:bg-granite-900/70 hover:text-porcelain-50">
-										<span>and @(Collection.Count - 5) more...</span>
-										<span class="ml-auto text-pine-teal-300">See full collection →</span>
+									<a href="/music/artist/@artist.Id">
+										<img src="@artist.ImageUrl" alt="" loading="lazy" class="h-14 w-14 rounded-full object-cover" />
 									</a>
 								}
-								else
+								<a href="/music/artist/@artist.Id" class="font-semibold text-porcelain-50">@artist.Name</a>
+							</div>
+						}
+					</div>
+					<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+						<h2 class="text-xl font-semibold text-porcelain-50">Favorite albums</h2>
+						@if (CurrentProfile.FavoriteAlbums.Count == 0)
+						{
+							<p class="text-sm text-porcelain-50/70">No favorite albums yet.</p>
+						}
+						@foreach (var album in CurrentProfile.FavoriteAlbums)
+						{
+							<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
+								@if (!string.IsNullOrWhiteSpace(album.ImageUrl))
 								{
-									<p class="px-1 text-sm text-porcelain-50/40">and @(Collection.Count - 5) more...</p>
+									<a href="/music/album/@album.Id">
+										<img src="@album.ImageUrl" alt="" loading="lazy" class="h-14 w-14 rounded-lg object-cover" />
+									</a>
 								}
-							}
-						</div>
-					}
-					else
-					{
-						<p class="text-xl font-semibold text-porcelain-50">No music collection yet.</p>
-					}
-				</div>
+								<div>
+									<a href="/music/album/@album.Id">
+										<a href="/music/album/@album.Id" class="font-semibold text-porcelain-50">@album.Title</a>
+										<p class="text-sm text-porcelain-50/70">@album.ArtistName</p>
+									</a>
+								</div>
+							</div>
+						}
 
-			</div>
+					</div>
+					<div class="grid content-start gap-4 self-start rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80 sm:col-span-2">
+						@if (Collection.Count > 0)
+						{
+							<div class="grid gap-3">
+								<div class="flex items-center justify-between">
+									<p class="text-xl font-semibold text-porcelain-50">Music collection</p>
+									@if (CanEditProfile)
+									{
+										<a href="/collection" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
+									}
+								</div>
+								<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+									@foreach (var item in Collection.Take(5))
+									{
+										<div class="flex items-center gap-3 rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
+											@if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+											{
+												<a href="/music/album/@item.Album?.Id">
+													<img src="@item.ImageUrl" alt="@item.AlbumTitle" class="h-12 w-12 rounded-lg object-cover" />
+												</a>
+											}	
+											else
+											{
+												<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-granite-800 text-xs text-porcelain-50/40">♪</div>
+											}
+											<div class="min-w-0">
+												<a href="/music/album/@item.Album?.Id" class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</a>
+												@if (!string.IsNullOrWhiteSpace(item.ArtistNames))
+												{
+													<p class="truncate text-sm text-porcelain-50/60">@item.ArtistNames</p>
+												}
+											</div>
+										</div>
+									}
+								</div>
+								@if (Collection.Count > 5)
+								{
+									@if (CanEditProfile)
+									{
+										<a href="/collection" class="flex items-center gap-2 rounded-xl border border-granite-700/60 bg-granite-900/40 px-4 py-3 text-sm text-porcelain-50/60 transition hover:bg-granite-900/70 hover:text-porcelain-50">
+											<span>and @(Collection.Count - 5) more...</span>
+											<span class="ml-auto text-pine-teal-300">See full collection →</span>
+										</a>
+									}
+									else
+									{
+										<p class="px-1 text-sm text-porcelain-50/40">and @(Collection.Count - 5) more...</p>
+									}
+								}
+							</div>
+						}
+						else
+						{
+							<p class="text-xl font-semibold text-porcelain-50">No music collection yet.</p>
+						}
+					</div>
+		
+				</div>
+			}
+			else
+			{
+				<div class="grid gap-2 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
+					<p class="text-xl font-semibold text-porcelain-50">This profile is private.</p>
+					<p class="text-sm text-porcelain-50/70">The user has chosen to keep their profile information and music collection private.</p>
+				</div>
+			}
 		}
 	</div>
 </section>

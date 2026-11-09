@@ -40,7 +40,7 @@ public sealed class MusicCatalogService
 		return artists;
 	}
 
-	// Loads stored albums first and requests artist details if the discography is missing.
+	// Loads stored albums and fills in artist details when the cached image is missing.
 	public async Task<(MusicArtist? Artist, List<MusicAlbum> Albums)> GetArtistDiscographyAsync(
 		int artistId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -53,7 +53,18 @@ public sealed class MusicCatalogService
 		cancellationToken.ThrowIfCancellationRequested();
 		if (albums.Count > 0)
 		{
-			if (!knownArtists.TryGetValue(artistId, out var artist))
+			knownArtists.TryGetValue(artistId, out var artist);
+			if (string.IsNullOrWhiteSpace(artist?.ImageUrl))
+			{
+				var details = await GetArtistAsync(artistId, currentUser, cancellationToken);
+				cancellationToken.ThrowIfCancellationRequested();
+				if (details is not null)
+				{
+					artist = details;
+					knownArtists[artistId] = details;
+				}
+			}
+			if (artist is null)
 			{
 				var info = albums.SelectMany(album => album.Artists)
 					.FirstOrDefault(item => (item.ArtistId > 0 ? item.ArtistId : item.Id) == artistId);
