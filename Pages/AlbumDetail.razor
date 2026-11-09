@@ -19,9 +19,11 @@ else if (album is null)
 else
 {
     <section class="grid w-full gap-6">
-        <a href="@BackUrl" class="w-fit text-sm text-pine-teal-300 transition hover:text-pine-teal-200"> @BackLabel</a>
         <div class="overflow-hidden rounded-3xl border border-granite-800/80 bg-coffee-bean-950/60">
-            <div class="flex flex-col gap-6 p-6 sm:flex-row sm:items-end sm:p-8">
+            <div class="flex flex-col gap-6 p-6 sm:p-8">
+                <a href="@BackUrl" class="w-fit text-sm text-pine-teal-300 transition hover:text-pine-teal-200"> @BackLabel</a>
+
+                <div class="flex flex-col gap-6 sm:flex-row sm:items-end">
                 @if (!string.IsNullOrWhiteSpace(album.ImageUrl))
                 {
                     <img src="@album.ImageUrl" alt="@($"{album.Title} album cover")" class="h-48 w-48 shrink-0 rounded-2xl object-cover shadow-lg shadow-black/40 sm:h-56 sm:w-56" />
@@ -57,6 +59,8 @@ else
                     </div>
                 </div>
             </div>
+        </div>
+
         </div>
 
         <div class="overflow-hidden rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60">

@@ -124,11 +124,12 @@
 							<div class="grid gap-3">
 								<div class="flex items-center justify-between">
 									<p class="text-xl font-semibold text-porcelain-50">Music collection</p>
-									@if (CanEditProfile)
-									{
-										<a href="/collection" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
-									}
+
 								</div>
+								@if (CanEditProfile)
+								{
+									<a href="/collection" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
+								}
 								<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 									@foreach (var item in Collection.Take(5))
 									{
@@ -172,6 +173,14 @@
 						else
 						{
 							<p class="text-xl font-semibold text-porcelain-50">No music collection yet.</p>
+
+							@if (CanEditProfile)
+							{
+								<div class="flex items-end justify-between gap-3 ">
+									<a href="/collection" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
+
+								</div>
+							}
 						}
 					</div>
 		
