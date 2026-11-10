@@ -91,7 +91,7 @@
 				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					@foreach (var album in albumResults)
 					{
-						<a href="/music/artist/@album.ArtistId" class="group flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 transition hover:border-pine-teal-400/40 hover:bg-coffee-bean-900/60">
+						<a href="/music/album/@album.Id" class="group flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 transition hover:border-pine-teal-400/40 hover:bg-coffee-bean-900/60">
 							@if (!string.IsNullOrWhiteSpace(album.ImageUrl))
 							{
 								<img src="@album.ImageUrl" alt="@album.Title" class="h-14 w-14 rounded-lg object-cover" />

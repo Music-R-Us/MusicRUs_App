@@ -143,9 +143,7 @@
 							<label class="text-sm font-medium text-porcelain-50" for="favorite-genre">Favorite genre</label>
 							<div class="flex gap-2">
 								<input id="favorite-genre" class="min-w-0 flex-1 rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind="genreSearch" @bind:event="oninput" />
-								<button type="button" @onclick="SetFavoriteGenre" class="self-end rounded-2xl border-2 border-porcelain-50/80 bg-pine-teal-700 px-4 py-4 text-sm font-bold text-porcelain-50 shadow-sm shadow-black/20 transition bg-fiery-terracotta-900/80 hover:border-porcelain-50 hover:bg-pine-teal-600">
-									Set Favorite
-								</button>
+
 							</div>
 						</div>
 					</div>
@@ -487,27 +485,6 @@
 		if (!profileModel.Tags.Contains(genre, StringComparer.OrdinalIgnoreCase))
 		{
 			profileModel.Tags.Add(genre);
-		}
-	}
-
-	// Accepts a suggested genre as the favorite and adds its tag.
-	private void SetFavoriteGenre()
-	{
-		if (string.IsNullOrWhiteSpace(genreSearch))
-		{
-			return;
-		}
-
-		if (!genres.Any(genre => string.Equals(genre.Name, genreSearch.Trim(), StringComparison.OrdinalIgnoreCase)))
-		{
-			formMessage = "Choose a genre from the suggestions so it can be saved.";
-			return;
-		}
-
-		draftFavoriteGenre = genreSearch.Trim();
-		if (!profileModel.Tags.Contains(draftFavoriteGenre, StringComparer.OrdinalIgnoreCase))
-		{
-			profileModel.Tags.Add(draftFavoriteGenre);
 		}
 	}
 

@@ -71,6 +71,13 @@
 							<p class="text-xl font-semibold text-porcelain-50">@(CurrentProfile.IsPublic ? "Public" : "Private")</p>
 						</div>
 					</div>
+					<div class="grid gap-2">
+						<div class="rounded-xl bg-coffee-bean-950/80 px-4 py-3">
+							<p class="text-porcelain-50/60">Favorite Genres</p>
+							@{ var genreNames = string.Join(", ", CurrentProfile.Genres.Select(genre => genre.Name).Where(name => !string.IsNullOrWhiteSpace(name))); }
+							<p class="text-xl font-semibold text-porcelain-50">@(string.IsNullOrWhiteSpace(genreNames) ? "Not set" : genreNames)</p>
+						</div>
+					</div>
 				</div>
 
 				<div class="grid gap-6 sm:grid-cols-2">

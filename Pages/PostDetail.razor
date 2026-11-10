@@ -64,9 +64,12 @@ else
 								<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
 									@if (!string.IsNullOrWhiteSpace(Post.ArtistImageUrl))
 									{
-										<img src="@Post.ArtistImageUrl" alt="" loading="lazy" class="h-14 w-14 shrink-0 rounded-full object-cover" />
+										<a href="/music/artist/@Post.ArtistId">
+											<img src="@Post.ArtistImageUrl" alt="" loading="lazy" class="h-14 w-14 shrink-0 rounded-full object-cover" />
+										</a>
 									}
-									<p class="font-semibold text-porcelain-50">@Post.Artist</p>
+
+									<a href="/music/artist/@Post.ArtistId" class="font-semibold text-porcelain-50">@Post.Artist</a>
 								</div>
 							</div>
 						}
@@ -77,11 +80,16 @@ else
 								<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
 									@if (!string.IsNullOrWhiteSpace(Post.AlbumImageUrl))
 									{
-										<img src="@Post.AlbumImageUrl" alt="" loading="lazy" class="h-14 w-14 shrink-0 rounded-lg object-cover" />
+										<a href="/music/album/@Post.AlbumId">
+											<img src="@Post.AlbumImageUrl" alt="" loading="lazy" class="h-14 w-14 shrink-0 rounded-lg object-cover" />
+										</a>
 									}
 									<div>
-										<p class="font-semibold text-porcelain-50">@Post.Album</p>
-										<p class="text-sm text-porcelain-50/70">@AlbumArtistName</p>
+										<a href="/music/album/@Post.AlbumId">
+											<p class="font-semibold text-porcelain-50">@Post.Album</p>
+											<p class="text-sm text-porcelain-50/70">@AlbumArtistName</p>	
+										</a>
+
 									</div>
 								</div>
 							</div>
@@ -91,10 +99,6 @@ else
 							<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
 								<h2 class="text-xl font-semibold text-porcelain-50">Track</h2>
 								<div class="flex items-center gap-3 rounded-xl bg-coffee-bean-950/80 p-3">
-									@if (!string.IsNullOrWhiteSpace(Post.TrackImageUrl))
-									{
-										<img src="@Post.TrackImageUrl" alt="" loading="lazy" class="h-14 w-14 shrink-0 rounded-lg object-cover" />
-									}
 									<div>
 										<p class="font-semibold text-porcelain-50">@Post.Song</p>
 										<p class="text-sm text-porcelain-50/70">@Post.TrackArtistName</p>
@@ -119,8 +123,8 @@ else
                 </div>
 
                 <EditForm Model="CommentDraft" OnValidSubmit="AddCommentAsync" class="grid gap-4">
-                    <InputText @bind-Value="CommentDraft" placeholder="Write a comment..." class="w-full rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
-                    <button class="inline-flex min-h-12 w-full cursor-pointer items-center justify-center justify-self-end rounded-full border-2 border-teal-200 bg-teal-300 px-6 py-3 text-base font-bold leading-6 text-stone-950 transition-colors hover:bg-teal-200 focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-white sm:w-auto" type="submit">Send comment</button>
+                    <InputText @bind-Value="CommentDraft.Body" placeholder="Write a comment..." class="w-full rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+                    <button class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1 text-sm text-porcelain-50 transition hover:border-pine-teal-300 hover:text-pine-teal-200" type="submit">Send comment</button>
                 </EditForm>
             }
 			<div class="grid gap-3">
@@ -184,7 +188,12 @@ else
 	public string PostId { get; set; } = string.Empty;
 
 	private MusicRUs.Models.PostItem? Post;
-	private string CommentDraft = string.Empty;
+	private readonly CommentDraftModel CommentDraft = new();
+
+	private sealed class CommentDraftModel
+	{
+		public string Body { get; set; } = string.Empty;
+	}
 	private MusicRUs.Models.CommentPage CommentPage = MusicRUs.Models.CommentPage.Empty(1, CommentsPageSize);
 	private Dictionary<int, MusicRUs.Models.ForumProfile> CommentProfiles = [];
 	private Dictionary<int, MusicRUs.Models.UserSession> CommentUsers = [];
@@ -254,13 +263,13 @@ else
 	// Submits the comment draft, clears it, and reloads the first comment page.
 	private async Task AddCommentAsync()
 	{
-		if (Post is null || string.IsNullOrWhiteSpace(CommentDraft))
+		if (Post is null || string.IsNullOrWhiteSpace(CommentDraft.Body))
 		{
 			return;
 		}
 
-		await PostFeed.AddCommentAsync(Post, AuthSession.CurrentUser, CommentDraft);
-		CommentDraft = string.Empty;
+		await PostFeed.AddCommentAsync(Post, AuthSession.CurrentUser, CommentDraft.Body);
+		CommentDraft.Body = string.Empty;
 
         ToastService?.Show("Comment added successfully.");
 

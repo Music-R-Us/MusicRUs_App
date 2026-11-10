@@ -1,0 +1,184 @@
+@page "/concerts"
+@layout MainLayout
+@using MusicRUs.Services
+@inject AuthSessionService AuthSession
+@inject BackendApiClient ApiClient
+@inject ConcertService ConcertApi
+
+<PageTitle>Concerts – MusicRUs</PageTitle>
+
+<section class="grid gap-6">
+    <div class="relative overflow-hidden rounded-3xl border border-fiery-terracotta-800 bg-linear-to-br from-fiery-terracotta-900/95 to-fiery-terracotta-700/85 p-8 shadow-xl lg:p-12">
+        <div class="grid gap-2">
+            <p class="text-xl font-semibold text-porcelain-50">Concerts</p>
+            <h1 class="text-4xl font-semibold text-porcelain-50 sm:text-5xl">Upcoming Concerts</h1>
+            <p class="text-xl text-porcelain-50">Search for an artist and find their next show.</p>
+        </div>
+    </div>
+
+    <div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-6">
+        <label for="concert-country" class="grid gap-2 text-sm text-porcelain-50">
+            Country
+            <select id="concert-country" @bind="countryCode" @bind:after="CountryChangedAsync" disabled="@busy"
+                    class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-4 py-3 text-porcelain-50">
+                <option value="">All countries</option>
+                @foreach (var country in CountryCodes.Countries)
+                {
+                    <option value="@country.Code">@country.Name (@country.Code)</option>
+                }
+            </select>
+        </label>
+        <p class="text-sm text-porcelain-50/60">@locationMessage</p>
+        <form @onsubmit="SearchAsync" @onsubmit:preventDefault class="flex flex-col gap-3 sm:flex-row">
+            <div class="grid flex-1 gap-2">
+                <label for="concert-artist" class="text-sm text-porcelain-50">Artist name</label>
+                <input id="concert-artist" @bind="query" @bind:event="oninput" placeholder="Search artists…" maxlength="200" disabled="@busy" class="w-full rounded-xl border border-granite-700 bg-coffee-bean-950 px-4 py-3 text-porcelain-50" />
+            </div>
+            <button type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(query))" class="self-end rounded-xl bg-fiery-terracotta-700 px-6 py-3 font-semibold text-porcelain-50 disabled:opacity-50">Search</button>
+        </form>
+    </div>
+
+    <div aria-live="polite" aria-busy="@busy" class="grid gap-4">
+        @if (busy)
+        {
+            <p class="text-porcelain-50/60">Loading…</p>
+        }
+        @if (error is not null)
+        {
+            <p role="alert" class="rounded-xl border border-fiery-terracotta-400/40 p-4 text-porcelain-50">@error</p>
+        }
+        @if (searched && !busy && selectedArtist is null && error is null)
+        {
+            @if (artists.Count == 0)
+            {
+                <p class="text-porcelain-50/60">No artists found. Try another name.</p>
+            }
+            else
+            {
+                <h2 class="text-xl font-semibold">Choose an artist</h2>
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    @foreach (var artist in artists)
+                    {
+                        <button type="button" @onclick="() => SelectArtistAsync(artist)" class="flex items-center gap-4 rounded-2xl border border-granite-700 bg-coffee-bean-950/60 p-4 text-left hover:border-pine-teal-400">
+                            @if (!string.IsNullOrWhiteSpace(artist.ImageUrl))
+                            {
+                                <img src="@artist.ImageUrl" alt="" class="h-14 w-14 rounded-xl object-cover" />
+                            }
+                            <span class="font-semibold">@artist.Name</span>
+                        </button>
+                    }
+                </div>
+            }
+        }
+        @if (selectedArtist is not null && !busy)
+        {
+            <h2 class="text-2xl font-semibold">@selectedArtist.Name concerts</h2>
+            @if (error is null && concerts.Count == 0)
+            {
+                <p class="text-porcelain-50/60">No upcoming concerts found@(string.IsNullOrEmpty(countryCode) ? "." : $" in {countryCode}. Try another country or choose All countries.")</p>
+            }
+            @foreach (var concert in concerts)
+            {
+                <article class="grid gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-6">
+                    <h3 class="text-xl font-semibold">@concert.Name</h3>
+                    <p>@concert.VenueName · @string.Join(", ", new[] { concert.City, concert.Region, concert.CountryCode }.Where(value => !string.IsNullOrWhiteSpace(value)))</p>
+                    <p class="text-sm text-porcelain-50/70">@FormatDate(concert)</p>
+                    @if (TicketUrl(concert.Url) is { } url)
+                    {
+                        <a href="@url" target="_blank" rel="noopener noreferrer" class="text-pine-teal-300 underline">View concert / tickets ?</a>
+                    }
+                </article>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    private string query = string.Empty;
+    private string countryCode = string.Empty;
+    private string locationMessage = "Choose a country to find shows nearby, or search all countries.";
+    private bool busy = true;
+    private bool searched;
+    private string? error;
+    private List<MusicArtist> artists = [];
+    private MusicArtist? selectedArtist;
+    private List<Concert> concerts = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthSession.InitializeAsync();
+        if (AuthSession.CurrentUser is { UserId: > 0 } user)
+        {
+            var profile = await AuthSession.GetForumProfileAsync(user.UserId);
+            countryCode = CountryCodes.FromLocation(profile?.Location) ?? string.Empty;
+            locationMessage = countryCode.Length > 0
+                ? $"Using your profile location: {profile!.Location} ({countryCode})."
+                : "Your profile location could not be matched to a country. Choose one below or search all countries.";
+        }
+        busy = false;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (busy || string.IsNullOrWhiteSpace(query)) return;
+        busy = true;
+        error = null;
+        selectedArtist = null;
+        concerts = [];
+        artists = [];
+        searched = true;
+        try
+        {
+            var results = ApiClient.CanUseBackend
+                ? await ApiClient.GetAsync<List<MusicArtist>>($"api/Artist/search?keyword={Uri.EscapeDataString(query.Trim())}", AuthSession.CurrentUser?.AccessToken)
+                : null;
+            if (results is null) error = "Could not search artists. Please try again.";
+            else artists = results.Where(artist => artist.Id > 0).DistinctBy(artist => artist.Id).ToList();
+        }
+        finally { busy = false; }
+    }
+
+    private async Task SelectArtistAsync(MusicArtist artist)
+    {
+        if (busy) return;
+        selectedArtist = artist;
+        await LoadConcertsAsync();
+    }
+
+    private async Task CountryChangedAsync()
+    {
+        locationMessage = "Country selected for this search.";
+        if (selectedArtist is not null) await LoadConcertsAsync();
+    }
+
+    private async Task LoadConcertsAsync()
+    {
+        if (selectedArtist is null) return;
+        busy = true;
+        error = null;
+        concerts = [];
+        try
+        {
+            var results = await ConcertApi.GetByArtistAsync(selectedArtist.Id, countryCode, AuthSession.CurrentUser);
+            if (results is null) error = "Could not load concerts. Please search again to retry.";
+            else concerts = results.Where(concert => concert.StartsAt >= DateTimeOffset.UtcNow).OrderBy(concert => concert.StartsAt).ToList();
+        }
+        finally { busy = false; }
+    }
+
+    private static string? TicketUrl(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) ? uri.AbsoluteUri : null;
+
+    private static string FormatDate(Concert concert)
+    {
+        try
+        {
+            var zone = TimeZoneInfo.FindSystemTimeZoneById(concert.VenueTimeZone);
+            return $"{TimeZoneInfo.ConvertTime(concert.StartsAt, zone):ddd, d MMM yyyy · HH:mm} ({concert.VenueTimeZone})";
+        }
+        catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException)
+        {
+            return $"{concert.StartsAt:ddd, d MMM yyyy · HH:mm zzz}";
+        }
+    }
+}
