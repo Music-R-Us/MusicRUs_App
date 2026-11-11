@@ -40,9 +40,11 @@ public sealed class ProfileColorService(IJSRuntime js)
         var green = ChannelBrightness(hex.Substring(3, 2));
         var blue = ChannelBrightness(hex.Substring(5, 2));
 
-        // Green contributes most to perceived brightness; blue contributes least.
-        var brightness = 0.21 * red + 0.72 * green + 0.07 * blue;
-        return brightness > 0.2 ? "#000000" : "#FFFFFF";
+        // Use WCAG relative luminance and select the higher contrast (at least 4.5:1).
+        var luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+        var blackContrast = (luminance + 0.05) / 0.05;
+        var whiteContrast = 1.05 / (luminance + 0.05);
+        return blackContrast >= whiteContrast ? "#000000" : "#FFFFFF";
     }
 
     // Converts a two-digit hex channel to linear brightness for comparing text contrast.

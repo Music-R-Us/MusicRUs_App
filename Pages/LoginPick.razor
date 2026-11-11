@@ -9,6 +9,8 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
+<PageTitle>@(currentMode == AuthMode.Login ? "Login" : "Signup") - MusicRUs</PageTitle>
+
 <section class="gradient-surface mx-auto w-full max-w-3xl p-10">
 	<div class="grid gap-8">
 		<div class="text-center">
@@ -31,12 +33,12 @@
 
 		<div class="grid grid-cols-2 gap-4">
 			<button type="button"
-				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Login ? "border-fiery-terracotta-300 bg-fiery-terracotta-500 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
+				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Login ? "border-fiery-terracotta-300 bg-fiery-terracotta-600 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
 				@onclick="ShowLogin">
 				Login
 			</button>
 			<button type="button"
-				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Signup ? "border-fiery-terracotta-300 bg-fiery-terracotta-500 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
+				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Signup ? "border-fiery-terracotta-300 bg-fiery-terracotta-600 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
 				@onclick="ShowSignup">
 				Signup
 			</button>
@@ -50,15 +52,21 @@
 				<div class="grid gap-5">
 					<div class="grid gap-2">
 						<label class="text-sm font-medium text-porcelain-50" for="login-username">Username</label>
-						<InputText id="login-username" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="loginModel.Username" />
+						<InputText id="login-username" name="login-username" autocomplete="username" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="loginModel.Username" />
 					</div>
 
 					<div class="grid gap-2">
 						<label class="text-sm font-medium text-porcelain-50" for="login-password">Password</label>
-						<InputText id="login-password" type="password" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="loginModel.Password" />
+						<InputText id="login-password" name="login-password" autocomplete="current-password" type="@(showLoginPassword ? "text" : "password")" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="loginModel.Password" />
+						<button type="button" aria-controls="login-password"
+						        aria-label="@(showLoginPassword ? "Hide password" : "Show password")"
+						        class="min-h-11 justify-self-start rounded-lg px-3 py-2 text-sm font-semibold text-porcelain-50 underline underline-offset-4 hover:bg-fiery-terracotta-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50"
+						        @onclick="() => showLoginPassword = !showLoginPassword">
+						    @(showLoginPassword ? "Hide password" : "Show password")
+						</button>
 					</div>
 
-					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
+					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-600 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-700 disabled:cursor-not-allowed disabled:opacity-60">
 						@(isSubmitting ? "Logging in..." : "Log in")
 					</button>
 				</div>
@@ -72,26 +80,38 @@
 				<div class="grid gap-5">
 					<div class="grid gap-2">
 						<label class="text-sm font-medium text-porcelain-50" for="signup-name">Username</label>
-						<InputText id="signup-name" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Username" />
+						<InputText id="signup-name" name="signup-name" autocomplete="username" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Username" />
 					</div>
 
 					<div class="grid gap-2">
 						<label class="text-sm font-medium text-porcelain-50" for="signup-email">Email</label>
-						<InputText id="signup-email" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Email" />
+						<InputText id="signup-email" type="email" name="signup-email" autocomplete="email" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Email" />
 					</div>
 
 					<div class="grid gap-2 sm:grid-cols-2">
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="signup-password">Password</label>
-							<InputText id="signup-password" type="password" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Password" />
+							<InputText id="signup-password" name="signup-password" autocomplete="new-password" type="@(showSignupPassword ? "text" : "password")" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.Password" />
+							<button type="button" aria-controls="signup-password"
+							        aria-label="@(showSignupPassword ? "Hide password" : "Show password")"
+							        class="min-h-11 justify-self-start rounded-lg px-3 py-2 text-sm font-semibold text-porcelain-50 underline underline-offset-4 hover:bg-fiery-terracotta-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50"
+							        @onclick="() => showSignupPassword = !showSignupPassword">
+							    @(showSignupPassword ? "Hide password" : "Show password")
+							</button>
 						</div>
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="signup-confirm">Confirm password</label>
-							<InputText id="signup-confirm" type="password" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.ConfirmPassword" />
+							<InputText id="signup-confirm" name="signup-confirm" autocomplete="new-password" type="@(showConfirmPassword ? "text" : "password")" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="signupModel.ConfirmPassword" />
+							<button type="button" aria-controls="signup-confirm"
+							        aria-label="@(showConfirmPassword ? "Hide confirm password" : "Show confirm password")"
+							        class="min-h-11 justify-self-start rounded-lg px-3 py-2 text-sm font-semibold text-porcelain-50 underline underline-offset-4 hover:bg-fiery-terracotta-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50"
+							        @onclick="() => showConfirmPassword = !showConfirmPassword">
+							    @(showConfirmPassword ? "Hide password" : "Show password")
+							</button>
 						</div>
 					</div>
 
-					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
+					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-600 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-700 disabled:cursor-not-allowed disabled:opacity-60">
 						@(isSubmitting ? "Creating account..." : "Create account")
 					</button>
 				</div>
@@ -119,6 +139,9 @@
 @code {
 	private AuthMode currentMode = AuthMode.Login;
 	private bool isSubmitting;
+	private bool showLoginPassword;
+	private bool showSignupPassword;
+	private bool showConfirmPassword;
 	private AuthMode? renderedGoogleMode;
 	private string formMessage = string.Empty;
 	private DotNetObjectReference<LoginPick>? dotNetReference;
@@ -144,11 +167,19 @@
 			: "signup_with");
 	}
 
+	private void ResetPasswordVisibility()
+	{
+		showLoginPassword = false;
+		showSignupPassword = false;
+		showConfirmPassword = false;
+	}
+
 	// Switches to the login form and clears the previous message.
 	private void ShowLogin()
 	{
 		formMessage = string.Empty;
 		currentMode = AuthMode.Login;
+		ResetPasswordVisibility();
 	}
 
 	// Switches to the signup form and clears the previous message.
@@ -156,6 +187,7 @@
 	{
 		formMessage = string.Empty;
 		currentMode = AuthMode.Signup;
+		ResetPasswordVisibility();
 	}
 
 	// Signs in with the entered credentials and redirects or shows the returned error.

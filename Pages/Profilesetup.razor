@@ -119,7 +119,7 @@
 					<div class="grid gap-2 sm:grid-cols-2">
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="display-name">Display name</label>
-							<InputText id="display-name" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.DisplayName" />
+							<InputText id="display-name" name="display-name" autocomplete="nickname" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.DisplayName" />
 						</div>
 
 						<div class="grid gap-2">
@@ -136,7 +136,7 @@
 					<div class="grid gap-2 sm:grid-cols-2">
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="avatar-url">Avatar URL</label>
-							<InputText id="avatar-url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.AvatarUrl" />
+							<InputText id="avatar-url" type="url" name="avatar-url" autocomplete="photo" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.AvatarUrl" />
 						</div>
 
 						<div class="grid gap-2">
@@ -177,7 +177,7 @@
 
 					<div class="grid gap-2">
 						<label class="text-sm font-medium text-porcelain-50" for="website-url">Website URL</label>
-						<InputText id="website-url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.WebsiteUrl" />
+						<InputText id="website-url" type="url" name="website-url" autocomplete="url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.WebsiteUrl" />
 					</div>
 
 					<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
@@ -214,7 +214,7 @@
 									}
 									<p class="font-semibold text-porcelain-50">@artistResult.Name</p>
 								</div>
-								<button type="button" @onclick="AddFavoriteArtist" class="rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
+								<button type="button" @onclick="AddFavoriteArtist" class="rounded-2xl bg-fiery-terracotta-600 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
 							</div>
 						}
 						<div class="flex flex-wrap gap-2">
@@ -272,7 +272,7 @@
 									</div>
 								</div>
 								<div class="flex flex-wrap gap-2">
-									<button type="button" @onclick="AddFavoriteAlbum" class="rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
+									<button type="button" @onclick="AddFavoriteAlbum" class="rounded-2xl bg-fiery-terracotta-600 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
 									<label class="grid gap-1 text-sm text-porcelain-50/80">
 										Media format
 										<select @bind="selectedCollectionFormat" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2">
@@ -327,7 +327,7 @@
 						<button type="button" @onclick="SkipSetup" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-5 py-3 text-base font-semibold text-porcelain-50/80 transition hover:text-porcelain-50">
 							Skip for now
 						</button>
-						<button type="submit" disabled="@isSaving" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-base font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
+						<button type="submit" disabled="@isSaving" class="rounded-2xl bg-fiery-terracotta-600 px-5 py-3 text-base font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-700 disabled:cursor-not-allowed disabled:opacity-60">
 							@(isSaving ? "Saving..." : "Save profile")
 						</button>
 					</div>
