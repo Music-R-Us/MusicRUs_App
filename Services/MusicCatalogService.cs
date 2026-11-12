@@ -202,7 +202,8 @@ public sealed class MusicCatalogService
 	public async Task<bool> AddToCollectionAsync(int userId, int albumId, UserSession? currentUser = null, CancellationToken cancellationToken = default, MediaFormat? format = null)
 	{
 		CollectionError = null;
-		if (!apiClient.CanUseBackend || userId <= 0 || albumId <= 0)
+		if (!apiClient.CanUseBackend || userId <= 0 || albumId <= 0
+			|| currentUser is null || currentUser.UserId != userId || string.IsNullOrWhiteSpace(currentUser.AccessToken))
 		{
 			return false;
 		}
@@ -227,7 +228,8 @@ public sealed class MusicCatalogService
 	public async Task<bool> RemoveFromCollectionAsync(int userId, int collectionId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
 		CollectionError = null;
-		if (!apiClient.CanUseBackend || userId <= 0 || collectionId <= 0)
+		if (!apiClient.CanUseBackend || userId <= 0 || collectionId <= 0
+			|| currentUser is null || currentUser.UserId != userId || string.IsNullOrWhiteSpace(currentUser.AccessToken))
 		{
 			return false;
 		}

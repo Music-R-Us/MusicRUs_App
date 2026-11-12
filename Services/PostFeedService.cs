@@ -82,7 +82,7 @@ public sealed class PostFeedService
 
 		if (CanUseBackend)
 		{
-			if (user.UserId <= 0)
+			if (user.UserId <= 0 || string.IsNullOrWhiteSpace(user.AccessToken))
 			{
 				throw new InvalidOperationException("Please sign out and log in again before posting.");
 			}
@@ -138,6 +138,11 @@ public sealed class PostFeedService
 	// Attempts the backend write when possible, then adds the comment to the local post.
 	public async Task AddCommentAsync(PostItem post, UserSession? user, string body, CancellationToken cancellationToken = default)
 	{
+		if (user is null || user.UserId <= 0 || string.IsNullOrWhiteSpace(user.AccessToken))
+		{
+			throw new InvalidOperationException("Please log in again before commenting.");
+		}
+
 		var request = new CreateCommentRequest
 		{
 			Author = ResolveDisplayName(user),
@@ -152,7 +157,10 @@ public sealed class PostFeedService
 				UserId = user.UserId,
 				Content = request.Body
 			};
-			await TryPostToApiAsync("api/Comment", forumRequest, user.AccessToken, cancellationToken);
+			if (!await TryPostToApiAsync("api/Comment", forumRequest, user.AccessToken, cancellationToken))
+			{
+				throw new InvalidOperationException("Could not save your comment. Please try again.");
+			}
 		}
 
 		AddLocalComment(post, request.Author, request.Body, user);
@@ -161,7 +169,7 @@ public sealed class PostFeedService
 	// Deletes an owned post from the backend when enabled, then removes it locally.
 	public async Task<bool> DeletePostAsync(PostItem post, UserSession? user, CancellationToken cancellationToken = default)
 	{
-		if (!IsOwnPost(post, user))
+		if (!IsOwnPost(post, user) || string.IsNullOrWhiteSpace(user?.AccessToken))
 		{
 			return false;
 		}
@@ -180,6 +188,7 @@ public sealed class PostFeedService
 				RemoveLocalPost(post);
 				return true;
 			}
+			return false;
 		}
 
 		return RemoveLocalPost(post);
@@ -188,7 +197,7 @@ public sealed class PostFeedService
 	// Deletes an owned comment from the backend when enabled, then removes it locally.
 	public async Task<bool> DeleteCommentAsync(PostItem post, CommentItem comment, UserSession? user, CancellationToken cancellationToken = default)
 	{
-		if (!IsOwnComment(comment, user))
+		if (!IsOwnComment(comment, user) || string.IsNullOrWhiteSpace(user?.AccessToken))
 		{
 			return false;
 		}
@@ -207,6 +216,7 @@ public sealed class PostFeedService
 				RemoveLocalComment(post, comment);
 				return true;
 			}
+			return false;
 		}
 
 		return RemoveLocalComment(post, comment);
@@ -476,6 +486,10 @@ public sealed class PostFeedService
 				{
 					return true;
 				}
+				if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+				{
+					return false;
+				}
 			}
 			catch
 			{
@@ -549,7 +563,7 @@ public sealed class PostFeedService
 		return IsOwnPost(post, currentUser) && post.CreatedAtUtc >= DisplayTime.Now.AddDays(-3);
 	}
 
-	// Checks ownership using the user's ID or matching username.
+	// Checks post ownership using the user's ID.
 	public static bool IsOwnPost(PostItem post, UserSession? currentUser)
 	{
 		if (currentUser is null)
@@ -557,11 +571,10 @@ public sealed class PostFeedService
 			return false;
 		}
 
-		return currentUser.UserId > 0 && post.UserId == currentUser.UserId
-			|| !string.IsNullOrWhiteSpace(currentUser.Username) && string.Equals(post.Author, currentUser.Username, StringComparison.OrdinalIgnoreCase);
+		return currentUser.UserId > 0 && post.UserId == currentUser.UserId;
 	}
 
-	// Checks comment ownership using the user's ID or matching username.
+	// Checks comment ownership using the user's ID.
 	public static bool IsOwnComment(CommentItem comment, UserSession? currentUser)
 	{
 		if (currentUser is null)
@@ -569,8 +582,7 @@ public sealed class PostFeedService
 			return false;
 		}
 
-		return currentUser.UserId > 0 && comment.UserId == currentUser.UserId
-			|| !string.IsNullOrWhiteSpace(currentUser.Username) && string.Equals(comment.Author, currentUser.Username, StringComparison.OrdinalIgnoreCase);
+		return currentUser.UserId > 0 && comment.UserId == currentUser.UserId;
 	}
 
 	// Supports numeric backend IDs and GUIDs used by locally created posts.

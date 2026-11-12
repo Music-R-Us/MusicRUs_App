@@ -268,7 +268,15 @@ else
 			return;
 		}
 
-		await PostFeed.AddCommentAsync(Post, AuthSession.CurrentUser, CommentDraft.Body);
+		try
+		{
+			await PostFeed.AddCommentAsync(Post, AuthSession.CurrentUser, CommentDraft.Body);
+		}
+		catch (InvalidOperationException exception)
+		{
+			ToastService?.Show(exception.Message);
+			return;
+		}
 		CommentDraft.Body = string.Empty;
 
         ToastService?.Show("Comment added successfully.");

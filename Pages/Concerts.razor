@@ -4,6 +4,7 @@
 @inject AuthSessionService AuthSession
 @inject BackendApiClient ApiClient
 @inject ConcertService ConcertApi
+@inject ArtistSubscriptionService SubscriptionApi
 
 <PageTitle>Concerts – MusicRUs</PageTitle>
 
@@ -16,7 +17,11 @@
         </div>
     </div>
 
-    <div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-6">
+    <div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-6 text-porcelain-50">
+        <div class="flex flex-wrap gap-3">
+            <button type="button" @onclick="() => ChangeViewAsync(false)" disabled="@busy" aria-pressed="@(!showSubscriptions)" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-4 py-3 text-porcelain-50 disabled:opacity-50 hover:bg-coffee-bean-800 transition">Search artists</button>
+            <button type="button" @onclick="() => ChangeViewAsync(true)" disabled="@busy" aria-pressed="@showSubscriptions" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-4 py-3 text-porcelain-50 disabled:opacity-50 hover:bg-coffee-bean-800">Subscribed artists</button>
+        </div>
         <label for="concert-country" class="grid gap-2 text-sm text-porcelain-50">
             Country
             <select id="concert-country" @bind="countryCode" @bind:after="CountryChangedAsync" disabled="@busy"
@@ -29,6 +34,8 @@
             </select>
         </label>
         <p class="text-sm text-porcelain-50/60">@locationMessage</p>
+        @if (!showSubscriptions)
+        {
         <form @onsubmit="SearchAsync" @onsubmit:preventDefault class="flex flex-col gap-3 sm:flex-row">
             <div class="grid flex-1 gap-2">
                 <label for="concert-artist" class="text-sm text-porcelain-50">Artist name</label>
@@ -36,9 +43,75 @@
             </div>
             <button type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(query))" class="self-end rounded-xl bg-fiery-terracotta-700 px-6 py-3 font-semibold text-porcelain-50 disabled:opacity-50">Search</button>
         </form>
+        }
     </div>
 
-    <div aria-live="polite" aria-busy="@busy" class="grid gap-4">
+    <div aria-live="polite" aria-busy="@busy" class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-6 text-porcelain-50">
+        @if (showSubscriptions && !busy)
+        {
+            <h2 class="text-2xl font-semibold">Subscribed artists</h2>
+            @if (AuthSession.CurrentUser is not { UserId: > 0 })
+            {
+                <p>Log in to see your subscribed artists.</p>
+            }
+            else if (subscribedArtists.Count == 0 && error is null)
+            {
+                <p>You have no artist subscriptions yet. Subscribe from an artist’s page.</p>
+            }
+            @if (AuthSession.CurrentUser is { UserId: > 0 } && string.IsNullOrEmpty(countryCode))
+            {
+                <p>Select a country above to see concerts for your subscribed artists.</p>
+            }
+            @foreach (var subscription in subscribedArtists)
+            {
+                <article class="grid gap-4 rounded-2xl border border-granite-700 bg-granite-900 p-5">
+                    <a href="@($"/music/artist/{subscription.ArtistId}")" class="flex items-center gap-3 text-xl font-semibold underline">
+                        @if (!string.IsNullOrWhiteSpace(subscription.Artist?.ImageUrl))
+                        {
+                            <img src="@subscription.Artist.ImageUrl" alt="" class="h-14 w-14 rounded-xl object-cover" />
+                        }
+                        @(subscription.Artist?.Name ?? $"Artist {subscription.ArtistId}")
+                    </a>
+                    @if (subscribedConcerts.TryGetValue(subscription.ArtistId, out var shows))
+                    {
+                        <details @key="subscription.ArtistId" class="rounded-xl border border-granite-700 bg-coffee-bean-950 p-4">
+                            <summary class="cursor-pointer rounded-lg font-semibold text-porcelain-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-porcelain-50">
+                                Upcoming concerts@(shows is null ? "" : $" ({shows.Count})")
+                            </summary>
+                            <div class="mt-4 grid gap-3">
+                        @if (shows is null)
+                        {
+                            <p role="alert">Could not load this artist’s concerts. Try refreshing below.</p>
+                        }
+                        else if (shows.Count == 0)
+                        {
+                            <p>No upcoming concerts in @countryCode.</p>
+                        }
+                        else
+                        {
+                            @foreach (var concert in shows)
+                            {
+                                <div class="grid gap-2 rounded-xl border border-granite-700 bg-coffee-bean-950 p-4">
+                                    <h3 class="text-lg font-semibold">@concert.Name</h3>
+                                    <p>@concert.VenueName · @concert.City · @concert.CountryCode</p>
+                                    <p>@FormatDate(concert)</p>
+                                    @if (TicketUrl(concert.Url) is { } url)
+                                    {
+                                        <a href="@url" target="_blank" rel="noopener noreferrer" class="underline">View concert / tickets</a>
+                                    }
+                                </div>
+                            }
+                        }
+                            </div>
+                        </details>
+                    }
+                </article>
+            }
+            @if (AuthSession.CurrentUser is { UserId: > 0 })
+            {
+                <button type="button" @onclick="LoadSubscriptionsAsync" class="justify-self-start rounded-xl border border-granite-700 bg-granite-900 px-4 py-3 hover:bg-granite-800">Refresh subscriptions and concerts</button>
+            }
+        }
         @if (busy)
         {
             <p class="text-porcelain-50/60">Loading…</p>
@@ -47,7 +120,7 @@
         {
             <p role="alert" class="rounded-xl border border-fiery-terracotta-400/40 p-4 text-porcelain-50">@error</p>
         }
-        @if (searched && !busy && selectedArtist is null && error is null)
+        @if (!showSubscriptions && searched && !busy && selectedArtist is null && error is null)
         {
             @if (artists.Count == 0)
             {
@@ -70,7 +143,7 @@
                 </div>
             }
         }
-        @if (selectedArtist is not null && !busy)
+        @if (!showSubscriptions && selectedArtist is not null && !busy)
         {
             <h2 class="text-2xl font-semibold">@selectedArtist.Name concerts</h2>
             @if (error is null && concerts.Count == 0)
@@ -103,6 +176,49 @@
     private List<MusicArtist> artists = [];
     private MusicArtist? selectedArtist;
     private List<Concert> concerts = [];
+    private bool showSubscriptions;
+    private List<ArtistSubscription> subscribedArtists = [];
+    private Dictionary<int, List<Concert>?> subscribedConcerts = [];
+
+    private async Task ChangeViewAsync(bool subscribed)
+    {
+        if (busy) return;
+        showSubscriptions = subscribed;
+        error = null;
+        if (subscribed) await LoadSubscriptionsAsync();
+        else if (selectedArtist is not null) await LoadConcertsAsync();
+    }
+
+    private async Task LoadSubscriptionsAsync()
+    {
+        busy = true;
+        error = null;
+        subscribedArtists = [];
+        subscribedConcerts = [];
+        try
+        {
+            if (AuthSession.CurrentUser is not { UserId: > 0 } user) return;
+            var subscriptions = await SubscriptionApi.GetByUserAsync(user);
+            if (subscriptions is null)
+            {
+                error = "Could not load subscriptions. Please try refreshing.";
+                return;
+            }
+            subscribedArtists = subscriptions.Where(item => item.ArtistId > 0)
+                .DistinctBy(item => item.ArtistId).ToList();
+            // Do not fetch worldwide shows when the user has not selected a country.
+            if (string.IsNullOrEmpty(countryCode)) return;
+            foreach (var subscription in subscribedArtists)
+            {
+                var results = await ConcertApi.GetByArtistAsync(subscription.ArtistId, countryCode, user);
+                subscribedConcerts[subscription.ArtistId] = results?
+                    .Where(concert => concert.StartsAt >= DateTimeOffset.UtcNow
+                        && string.Equals(concert.CountryCode, countryCode, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(concert => concert.StartsAt).ToList();
+            }
+        }
+        finally { busy = false; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -148,7 +264,8 @@
     private async Task CountryChangedAsync()
     {
         locationMessage = "Country selected for this search.";
-        if (selectedArtist is not null) await LoadConcertsAsync();
+        if (showSubscriptions) await LoadSubscriptionsAsync();
+        else if (selectedArtist is not null) await LoadConcertsAsync();
     }
 
     private async Task LoadConcertsAsync()

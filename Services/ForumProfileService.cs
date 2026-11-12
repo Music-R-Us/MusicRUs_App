@@ -55,6 +55,11 @@ public sealed class ForumProfileService
 	// Shares profile requests for ten seconds, separately for each user ID and access token.
 	public async Task<ForumProfile?> GetForumProfileAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
+		if (currentUser is not null && userId == currentUser.UserId)
+		{
+			return await GetForumProfileMeAsync(userId, currentUser, cancellationToken);
+		}
+
 		if (userId <= 0 || !apiClient.CanUseBackend)
 		{
 			return null;
@@ -64,6 +69,28 @@ public sealed class ForumProfileService
 		if (!profileReads.TryGetValue(key, out var cached) || cached.Expires <= DateTimeOffset.UtcNow)
 		{
 			cached = (apiClient.GetAsync<ForumProfile>($"api/ForumProfile/user/{userId}", currentUser?.AccessToken, cancellationToken), DateTimeOffset.UtcNow.AddSeconds(10));
+			profileReads[key] = cached;
+		}
+		var profile = await cached.Load;
+		if (profile is null && profileReads.TryGetValue(key, out var latest) && latest.Load == cached.Load)
+		{
+			profileReads.Remove(key);
+		}
+		return profile;
+	}
+
+	public async Task<ForumProfile?> GetForumProfileMeAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
+	{
+		if (userId <= 0 || currentUser is null || currentUser.UserId != userId
+			|| string.IsNullOrWhiteSpace(currentUser.AccessToken) || !apiClient.CanUseBackend)
+		{
+			return null;
+		}
+
+		var key = (userId, currentUser.AccessToken);
+		if (!profileReads.TryGetValue(key, out var cached) || cached.Expires <= DateTimeOffset.UtcNow)
+		{
+			cached = (apiClient.GetAsync<ForumProfile>("api/ForumProfile/me", currentUser.AccessToken, cancellationToken), DateTimeOffset.UtcNow.AddSeconds(10));
 			profileReads[key] = cached;
 		}
 		var profile = await cached.Load;
@@ -94,7 +121,8 @@ public sealed class ForumProfileService
 			profile.UserId = currentUser?.UserId ?? 0;
 		}
 
-		if (profile.UserId <= 0 || !apiClient.CanUseBackend)
+		if (profile.UserId <= 0 || currentUser is null || currentUser.UserId != profile.UserId
+			|| string.IsNullOrWhiteSpace(currentUser.AccessToken) || !apiClient.CanUseBackend)
 		{
 			return false;
 		}
@@ -105,7 +133,7 @@ public sealed class ForumProfileService
 			profile.CreatedAt = profile.UpdatedAt;
 		}
 
-		var existing = await apiClient.GetWithStatusAsync<ForumProfile>($"api/ForumProfile/user/{profile.UserId}", currentUser?.AccessToken, cancellationToken);
+		var existing = await apiClient.GetWithStatusAsync<ForumProfile>("api/ForumProfile/me", currentUser.AccessToken, cancellationToken);
 		var backendProfile = existing.Value;
 		// Only a confirmed missing profile should trigger creation.
 		if (backendProfile is null && existing.StatusCode != System.Net.HttpStatusCode.NotFound)
@@ -214,7 +242,7 @@ public sealed class ForumProfileService
 			UpdatedAt = profile.UpdatedAt
 		};
 
-		return apiClient.PatchAsync($"api/ForumProfile/user/{profile.UserId}", request, currentUser?.AccessToken, cancellationToken);
+		return apiClient.PatchAsync("api/ForumProfile/me", request, currentUser?.AccessToken, cancellationToken);
 	}
 
 

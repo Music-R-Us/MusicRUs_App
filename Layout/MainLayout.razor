@@ -8,14 +8,13 @@
 
 <Toast />
 <div
-    class="min-h-screen bg-linear-to-br from-coffee-bean-950 via-coffee-bean-900 to-fiery-terracotta-950 text-porcelain-50 [html[data-theme=light]_&]:from-porcelain-50 [html[data-theme=light]_&]:via-porcelain-100 [html[data-theme=light]_&]:to-porcelain-50">
-    <div class="flex min-h-screen w-full flex-col lg:flex-row">
+    class="h-dvh overflow-hidden bg-linear-to-br from-coffee-bean-950 via-coffee-bean-900 to-fiery-terracotta-950 text-porcelain-50 [html[data-theme=light]_&]:from-porcelain-50 [html[data-theme=light]_&]:via-porcelain-100 [html[data-theme=light]_&]:to-porcelain-50">
+    <div class="flex h-full min-h-0 w-full flex-col lg:flex-row">
         <aside
-            class="border-b border-fiery-terracotta-700/40 bg-linear-to-r from-fiery-terracotta-950 to-fiery-terracotta-900 px-6 py-5 [html[data-theme=light]_&]:from-fiery-terracotta-900 [html[data-theme=light]_&]:to-fiery-terracotta-800 lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r-0 lg:px-5">
+            class="shrink-0 border-b border-fiery-terracotta-700/40 bg-linear-to-r from-fiery-terracotta-950 to-fiery-terracotta-900 px-6 py-5 [html[data-theme=light]_&]:from-fiery-terracotta-900 [html[data-theme=light]_&]:to-fiery-terracotta-800 lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r-0 lg:px-5">
             <div class="mb-6 flex items-center gap-3">
                 <a href="/">
-                    <img src="/favicon.png" alt="Music-R-Us logo"
-                         class="h-10 w-10 rounded-full bg-granite-300 object-cover" />
+                    <img src="/favicon.png" alt="Music-R-Us logo" class="h-10 w-10 rounded-full bg-granite-300 object-cover" />
                 </a>
                 <a href="/" class="text-lg font-semibold text-porcelain-50">Music-R-Us</a>
 
@@ -23,9 +22,9 @@
 
             <Navbar />
         </aside>
-        <main class="flex-1">
+        <main class="flex min-h-0 min-w-0 flex-1 flex-col">
             <header
-                class="flex items-center justify-between bg-linear-to-r from-fiery-terracotta-900 to-fiery-terracotta-950 px-6 py-4 [html[data-theme=light]_&]:from-fiery-terracotta-800 [html[data-theme=light]_&]:to-fiery-terracotta-900">
+                class="flex shrink-0 items-center justify-between bg-linear-to-r from-fiery-terracotta-900 to-fiery-terracotta-950 px-6 py-4 [html[data-theme=light]_&]:from-fiery-terracotta-800 [html[data-theme=light]_&]:to-fiery-terracotta-900">
                 @if (AuthSession.CurrentUser is not null)
                 {
                     <a href="@($"/profile/{AuthSession.CurrentUser.UserId}")"
@@ -33,8 +32,7 @@
                        class="inline-flex items-center gap-3 rounded-full border border-granite-400/30 px-2 py-1 pr-4 transition">
                         @if (!string.IsNullOrWhiteSpace(HeaderAvatarUrl))
                         {
-                            <img src="@HeaderAvatarUrl" alt="@HeaderDisplayName avatar"
-                                 class="h-9 w-9 rounded-full bg-granite-300 object-cover" />
+                            <img src="@HeaderAvatarUrl" alt="@HeaderDisplayName avatar" class="h-9 w-9 rounded-full bg-granite-300 object-cover" />
                         }
                         else
                         {
@@ -73,7 +71,7 @@
 
             </header>
 
-            <article class="px-6 py-8 lg:px-10">
+            <article class="min-h-0 flex-1 overflow-y-auto px-6 py-8 lg:px-10" tabindex="0" aria-label="Page content">
                 @Body
             </article>
         </main>

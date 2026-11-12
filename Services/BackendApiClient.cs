@@ -101,9 +101,15 @@ public sealed class BackendApiClient
 		}
 	}
 
-	// Sends a write request with optional authentication; request failures return false.
+	// User writes require a bearer token; request failures return false.
 	private async Task<bool> SendAsync(HttpMethod method, string relativeUrl, string? accessToken, HttpContent? content, CancellationToken cancellationToken)
 	{
+		if (string.IsNullOrWhiteSpace(accessToken))
+		{
+			content?.Dispose();
+			return false;
+		}
+
 		try
 		{
 			using var request = new HttpRequestMessage(method, relativeUrl)
