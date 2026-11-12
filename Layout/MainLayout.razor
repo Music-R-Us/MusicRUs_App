@@ -11,16 +11,26 @@
     class="h-dvh overflow-hidden bg-linear-to-br from-coffee-bean-950 via-coffee-bean-900 to-fiery-terracotta-950 text-porcelain-50 [html[data-theme=light]_&]:from-porcelain-50 [html[data-theme=light]_&]:via-porcelain-100 [html[data-theme=light]_&]:to-porcelain-50">
     <div class="flex h-full min-h-0 w-full flex-col lg:flex-row">
         <aside
-            class="shrink-0 border-b border-fiery-terracotta-700/40 bg-linear-to-r from-fiery-terracotta-950 to-fiery-terracotta-900 px-6 py-5 [html[data-theme=light]_&]:from-fiery-terracotta-900 [html[data-theme=light]_&]:to-fiery-terracotta-800 lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r-0 lg:px-5">
-            <div class="mb-6 flex items-center gap-3">
+            class="relative z-20 shrink-0 border-b border-fiery-terracotta-700/40 bg-linear-to-r from-fiery-terracotta-950 to-fiery-terracotta-900 px-6 py-5 lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r-0 lg:px-5">
+            <div class="flex items-center gap-3 lg:mb-6">
                 <a href="/">
                     <img src="/favicon.png" alt="Music-R-Us logo" class="h-10 w-10 rounded-full bg-granite-300 object-cover" />
                 </a>
                 <a href="/" class="text-lg font-semibold text-porcelain-50">Music-R-Us</a>
-
+                <button type="button"
+                        class="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-porcelain-50/20 text-porcelain-50 hover:bg-porcelain-50/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50 lg:hidden"
+                        @onclick="() => isNavigationOpen = !isNavigationOpen"
+                        aria-expanded="@(isNavigationOpen ? "true" : "false")"
+                        aria-controls="main-navigation"
+                        aria-label="@(isNavigationOpen ? "Close navigation menu" : "Open navigation menu")">☰
+                </button>
             </div>
 
-            <Navbar />
+            <div id="main-navigation"
+                 class="@(isNavigationOpen ? "block" : "hidden") absolute inset-x-0 top-full max-h-[60dvh] overflow-y-auto border-b border-fiery-terracotta-700/40 bg-linear-to-r from-fiery-terracotta-950 to-fiery-terracotta-900 px-6 pb-5 shadow-lg [html[data-theme=light]_&]:from-fiery-terracotta-900 [html[data-theme=light]_&]:to-fiery-terracotta-800 lg:static lg:block lg:max-h-none lg:border-b-0 lg:bg-none lg:p-0 lg:shadow-none"
+                 @onkeydown="OnNavigationKeyDown">
+                <Navbar OnNavigate="CloseNavigation" />
+            </div>
         </aside>
         <main class="flex min-h-0 min-w-0 flex-1 flex-col">
             <header
@@ -92,7 +102,15 @@
 @code {
     private ForumProfile? HeaderProfile;
     private bool isLightMode;
+    private bool isNavigationOpen;
     private string headerColor = MusicRUs.Services.ProfileColorService.DefaultColor;
+
+    private void CloseNavigation() => isNavigationOpen = false;
+
+    private void OnNavigationKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") CloseNavigation();
+    }
 
     // Subscribes to authentication and profile-color changes for the header.
     protected override void OnInitialized()
