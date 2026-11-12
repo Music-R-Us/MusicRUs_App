@@ -221,7 +221,9 @@ else
     private bool subscriptionStatusLoaded;
     private string? subscriptionMessage;
 
-    // Loads the routed artist's albums and the signed-in user's collection membership.
+    /// <summary>
+    /// Loads the routed artist's albums and the signed-in user's collection membership.
+    /// </summary>
     protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
@@ -257,6 +259,9 @@ else
         isLoading = false;
     }
 
+    /// <summary>
+    /// Subscribes to or unsubscribes from this artist after confirming the current subscription status.
+    /// </summary>
     private async Task ToggleSubscriptionAsync()
     {
         if (subscriptionBusy || AuthSession.CurrentUser is not { UserId: > 0 } user) return;
@@ -295,7 +300,9 @@ else
         finally { subscriptionBusy = false; }
     }
 
-    // Fetch concerts only when the user first opens this view.
+    /// <summary>
+    /// Fetch concerts only when the user first opens this view.
+    /// </summary>
     private async Task ToggleConcertsAsync()
     {
         showConcerts = !showConcerts;
@@ -303,6 +310,9 @@ else
             await LoadConcertsAsync();
     }
 
+    /// <summary>
+    /// Loads upcoming concerts for the selected artist, using the selected or profile country when available.
+    /// </summary>
     private async Task LoadConcertsAsync()
     {
         var requestedArtistId = ArtistId;
@@ -342,6 +352,9 @@ else
         }
     }
 
+    /// <summary>
+    /// Formats the concert date in the venue time zone, falling back to the supplied offset.
+    /// </summary>
     private static string FormatConcertDate(Concert concert)
     {
         try
@@ -355,7 +368,9 @@ else
         }
     }
 
-    // Loads and stores an album's tracks while showing its loading indicator.
+    /// <summary>
+    /// Loads and stores an album's tracks while showing its loading indicator.
+    /// </summary>
     private async Task LoadTracksAsync(int albumId)
     {
         loadingTrackAlbumId = albumId;
@@ -364,7 +379,9 @@ else
         loadingTrackAlbumId = 0;
     }
 
-    // Adds the selected album and media format, then refreshes collection membership.
+    /// <summary>
+    /// Adds the selected album and media format, then refreshes collection membership.
+    /// </summary>
     private async Task AddToCollectionAsync(int albumId)
     {
         if (AuthSession.CurrentUser?.UserId is not > 0)
@@ -380,7 +397,9 @@ else
         }
     }
 
-    // Removes the album's owned entry, then refreshes collection membership.
+    /// <summary>
+    /// Removes the album's owned entry, then refreshes collection membership.
+    /// </summary>
     private async Task RemoveFromCollectionAsync(int albumId)
     {
         if (AuthSession.CurrentUser?.UserId is not > 0)
@@ -400,7 +419,9 @@ else
             SetCollection(await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId));
         }
     }
-    // Keeps the collection entries and owned-album lookup in sync.
+    /// <summary>
+    /// Keeps the collection entries and owned-album lookup in sync.
+    /// </summary>
     private void SetCollection(List<MusicCollectionItem> collection)
     {
         collectionAlbumIds = collection.Select(item => item.AlbumId).ToHashSet();

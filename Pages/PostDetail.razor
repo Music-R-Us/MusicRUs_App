@@ -13,7 +13,7 @@
 @if (Post is null)
 {
 	<section class="rounded-4xl border border-granite-800/80 gradient-surface p-8 text-porcelain-50 backdrop-blur">
-		<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Posts</p>
+		<p class="text-sm font-semibold text-pine-teal-300">Posts</p>
 		<h1 class="mt-3 text-4xl font-semibold tracking-tight">Post not found</h1>
 		<p class="mt-4 text-porcelain-50/75">The post you selected no longer exists.</p>
 		<button class="mt-6 rounded-full bg-pine-teal-400 px-5 py-3 text-sm font-semibold text-coffee-bean-950" type="button" @onclick="GoBack">Back to posts</button>
@@ -24,7 +24,7 @@ else
 	<section class="grid gap-6">
 		<div class="rounded-4xl border border-granite-800/80 gradient-surface p-8 backdrop-blur">
 			<div class="grid gap-3">
-				<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Post detail</p>
+				<p class="text-xl font-semibold text-pine-teal-300">Post detail</p>
 				<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl">@Post.Title</h1>
 				<div class="flex flex-wrap items-center gap-2 text-sm text-porcelain-50/70">
 					<span>•</span>
@@ -122,9 +122,9 @@ else
                     <p class="text-sm text-porcelain-50/60">@CommentPage.TotalCount replies</p>
                 </div>
 
-                <EditForm Model="CommentDraft" OnValidSubmit="AddCommentAsync" class="grid gap-4">
-                    <InputText @bind-Value="CommentDraft.Body" placeholder="Write a comment..." class="w-full rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
-                    <button class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1 text-sm text-porcelain-50 transition hover:border-pine-teal-300 hover:text-pine-teal-200" type="submit">Send comment</button>
+				<EditForm Model="CommentDraft" OnValidSubmit="AddCommentAsync" class="flex items-center gap-4">
+					<InputText @bind-Value="CommentDraft.Body" placeholder="Write a comment..." class="min-w-0 flex-1 rounded-2xl border border-granite-700 bg-coffee-bean-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-pine-teal-400" />
+                    <button class="w-fit h-full rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition" type="submit">Send comment</button>
                 </EditForm>
             }
 			<div class="grid gap-3">
@@ -202,7 +202,9 @@ else
 	private string AlbumArtistName = string.Empty;
 	private const int CommentsPageSize = 10;
 
-	// Loads the routed post, its author, linked music details, and first comment page.
+	/// <summary>
+	/// Loads the routed post, its author, linked music details, and first comment page.
+	/// </summary>
 	protected override async Task OnParametersSetAsync()
 	{
 		await AuthSession.InitializeAsync();
@@ -217,7 +219,9 @@ else
 		await LoadCommentsAsync(1);
 	}
 
-	// Fills in linked music details used by the post's music card.
+	/// <summary>
+	/// Fills in linked music details used by the post's music card.
+	/// </summary>
 	private async Task LoadMusicDetailsAsync()
 	{
 		AlbumArtistName = string.Empty;
@@ -257,10 +261,14 @@ else
 		if (string.IsNullOrWhiteSpace(post.TrackArtistName)) post.TrackArtistName = AlbumArtistName;
 	}
 
-	// Returns to the posts feed.
+	/// <summary>
+	/// Returns to the posts feed.
+	/// </summary>
 	private void GoBack() => Navigation.NavigateTo("/posts");
 
-	// Submits the comment draft, clears it, and reloads the first comment page.
+	/// <summary>
+	/// Submits the comment draft, clears it, and reloads the first comment page.
+	/// </summary>
 	private async Task AddCommentAsync()
 	{
 		if (Post is null || string.IsNullOrWhiteSpace(CommentDraft.Body))
@@ -284,7 +292,9 @@ else
 		await LoadCommentsAsync(1);
 	}
 
-	// Deletes the current user's post and returns to the feed after success.
+	/// <summary>
+	/// Deletes the current user's post and returns to the feed after success.
+	/// </summary>
 	private async Task DeletePostAsync()
 	{
 		if (Post is null || !IsOwnPost)
@@ -300,7 +310,9 @@ else
 		}
 	}
 
-	// Deletes the current user's comment and reloads the current comment page.
+	/// <summary>
+	/// Deletes the current user's comment and reloads the current comment page.
+	/// </summary>
 	private async Task DeleteCommentAsync(MusicRUs.Models.CommentItem comment)
 	{
 		if (Post is null || !IsOwnComment(comment))
@@ -316,7 +328,9 @@ else
 		}
 	}
 
-	// Loads the requested comment page and its authors' profile details.
+	/// <summary>
+	/// Loads the requested comment page and its authors' profile details.
+	/// </summary>
 	private async Task LoadCommentsAsync(int page)
 	{
 		if (Post is null)
@@ -329,7 +343,9 @@ else
 		await LoadCommentProfilesAsync();
 	}
 
-	// Loads author profiles for the visible comments.
+	/// <summary>
+	/// Loads author profiles for the visible comments.
+	/// </summary>
 	private async Task LoadCommentProfilesAsync()
 	{
 		CommentProfiles = [];
@@ -350,19 +366,25 @@ else
 		}
 	}
 
-	// Loads the previous comment page without going below page one.
+	/// <summary>
+	/// Loads the previous comment page without going below page one.
+	/// </summary>
 	private async Task PreviousCommentsPageAsync()
 	{
 		await LoadCommentsAsync(Math.Max(1, CommentPage.Page - 1));
 	}
 
-	// Loads the next comment page without passing the last page.
+	/// <summary>
+	/// Loads the next comment page without passing the last page.
+	/// </summary>
 	private async Task NextCommentsPageAsync()
 	{
 		await LoadCommentsAsync(Math.Min(CommentPage.TotalPages, CommentPage.Page + 1));
 	}
 
-	// Checks whether the post contains an artist, album, or song name.
+	/// <summary>
+	/// Checks whether the post contains an artist, album, or song name.
+	/// </summary>
 	private static bool HasMusicSelection(MusicRUs.Models.PostItem post)
 	{
 		return !string.IsNullOrWhiteSpace(post.Artist)
@@ -385,13 +407,17 @@ else
 	private bool IsOwnPost => Post is not null
 		&& MusicRUs.Services.PostFeedService.IsOwnPost(Post, AuthSession.CurrentUser);
 
-	// Checks comment ownership using the user's ID or matching username.
+	/// <summary>
+	/// Checks comment ownership using the user's ID or matching username.
+	/// </summary>
 	private bool IsOwnComment(MusicRUs.Models.CommentItem comment)
 	{
 		return MusicRUs.Services.PostFeedService.IsOwnComment(comment, AuthSession.CurrentUser);
 	}
 
-	// Uses the author's profile name, username, or user-ID fallback.
+	/// <summary>
+	/// Uses the author's profile name, username, or user-ID fallback.
+	/// </summary>
 	private string GetCommentAuthor(MusicRUs.Models.CommentItem comment)
 	{
 		var profile = GetCommentAuthorProfile(comment);
@@ -405,7 +431,9 @@ else
 			: $"User {comment.UserId}";
 	}
 
-	// Returns the loaded profile for a comment's author when available.
+	/// <summary>
+	/// Returns the loaded profile for a comment's author when available.
+	/// </summary>
 	private MusicRUs.Models.ForumProfile? GetCommentAuthorProfile(MusicRUs.Models.CommentItem comment)
 	{
 		return comment.UserId > 0 && CommentProfiles.TryGetValue(comment.UserId, out var profile)
@@ -413,13 +441,17 @@ else
 			: null;
 	}
 
-	// Returns the comment author's profile avatar or an empty string.
+	/// <summary>
+	/// Returns the comment author's profile avatar or an empty string.
+	/// </summary>
 	private string GetCommentAuthorAvatarUrl(MusicRUs.Models.CommentItem comment)
 	{
 		return GetCommentAuthorProfile(comment)?.AvatarUrl ?? string.Empty;
 	}
 
-	// Builds a one-letter avatar fallback from the comment author's name.
+	/// <summary>
+	/// Builds a one-letter avatar fallback from the comment author's name.
+	/// </summary>
 	private string GetCommentAuthorInitial(MusicRUs.Models.CommentItem comment)
 	{
 		var author = GetCommentAuthor(comment);
@@ -428,7 +460,9 @@ else
 			: author.Trim()[0].ToString().ToUpperInvariant();
 	}
 
-	// Builds the comment author's profile link or falls back to the feed.
+	/// <summary>
+	/// Builds the comment author's profile link or falls back to the feed.
+	/// </summary>
 	private static string GetCommentAuthorProfileUrl(MusicRUs.Models.CommentItem comment)
 	{
 		return comment.UserId > 0

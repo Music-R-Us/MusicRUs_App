@@ -105,21 +105,31 @@
     private bool isNavigationOpen;
     private string headerColor = MusicRUs.Services.ProfileColorService.DefaultColor;
 
+    /// <summary>
+    /// Closes the navigation menu.
+    /// </summary>
     private void CloseNavigation() => isNavigationOpen = false;
 
+    /// <summary>
+    /// Closes the navigation menu when Escape is pressed.
+    /// </summary>
     private void OnNavigationKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Escape") CloseNavigation();
     }
 
-    // Subscribes to authentication and profile-color changes for the header.
+    /// <summary>
+    /// Subscribes to authentication and profile-color changes for the header.
+    /// </summary>
     protected override void OnInitialized()
     {
         AuthSession.Changed += OnAuthSessionChanged;
         ProfileColors.Changed += OnProfileColorChanged;
     }
 
-    // Loads the theme, session, and header after first render, then enables inactivity tracking.
+    /// <summary>
+    /// Loads the theme, session, and header after first render, then enables inactivity tracking.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -138,7 +148,9 @@
         }
     }
 
-    // Reloads header details and redraws the layout after authentication changes.
+    /// <summary>
+    /// Reloads header details and redraws the layout after authentication changes.
+    /// </summary>
     private void OnAuthSessionChanged()
     {
         _ = InvokeAsync(async () =>
@@ -148,7 +160,9 @@
         });
     }
 
-    // Reloads the current user's saved header color and redraws the layout.
+    /// <summary>
+    /// Reloads the current user's saved header color and redraws the layout.
+    /// </summary>
     private void OnProfileColorChanged()
     {
         _ = InvokeAsync(async () =>
@@ -161,7 +175,9 @@
         });
     }
 
-    // Switches the browser theme and displays the selected mode.
+    /// <summary>
+    /// Switches the browser theme and displays the selected mode.
+    /// </summary>
     private async Task ToggleThemeAsync()
     {
         var requestedTheme = isLightMode ? "dark" : "light";
@@ -174,7 +190,9 @@
         ToastService.Show($"Switched to {(isLightMode ? "light" : "dark")} mode.");
     }
 
-    // Loads the signed-in user's profile details for the navigation header.
+    /// <summary>
+    /// Loads the signed-in user's profile details for the navigation header.
+    /// </summary>
     private async Task LoadHeaderProfileAsync()
     {
         if (AuthSession.CurrentUser is null || AuthSession.CurrentUser.UserId <= 0)
@@ -222,14 +240,18 @@
         ? "P"
         : HeaderDisplayName[0].ToString().ToUpperInvariant();
 
-    // Rejects blank values and the API's string placeholder for header details.
+    /// <summary>
+    /// Rejects blank values and the API's string placeholder for header details.
+    /// </summary>
     private static bool IsMeaningfulProfileValue(string? value)
     {
         return !string.IsNullOrWhiteSpace(value)
             && !string.Equals(value.Trim(), "string", StringComparison.OrdinalIgnoreCase);
     }
 
-    // Unsubscribes from authentication and profile-color events.
+    /// <summary>
+    /// Unsubscribes from authentication and profile-color events.
+    /// </summary>
     public void Dispose()
     {
         AuthSession.Changed -= OnAuthSessionChanged;

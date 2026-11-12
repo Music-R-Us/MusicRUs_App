@@ -19,8 +19,8 @@
 
     <div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-6 text-porcelain-50">
         <div class="flex flex-wrap gap-3">
-            <button type="button" @onclick="() => ChangeViewAsync(false)" disabled="@busy" aria-pressed="@(!showSubscriptions)" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-4 py-3 text-porcelain-50 disabled:opacity-50 hover:bg-coffee-bean-800 transition">Search artists</button>
-            <button type="button" @onclick="() => ChangeViewAsync(true)" disabled="@busy" aria-pressed="@showSubscriptions" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-4 py-3 text-porcelain-50 disabled:opacity-50 hover:bg-coffee-bean-800">Subscribed artists</button>
+            <button type="button" @onclick="() => ChangeViewAsync(false)" disabled="@busy" aria-pressed="@(!showSubscriptions)" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">Search artists</button>
+            <button type="button" @onclick="() => ChangeViewAsync(true)" disabled="@busy" aria-pressed="@showSubscriptions" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">Subscribed artists</button>
         </div>
         <label for="concert-country" class="grid gap-2 text-sm text-porcelain-50">
             Country
@@ -41,7 +41,7 @@
                 <label for="concert-artist" class="text-sm text-porcelain-50">Artist name</label>
                 <input id="concert-artist" @bind="query" @bind:event="oninput" placeholder="Search artists…" maxlength="200" disabled="@busy" class="w-full rounded-xl border border-granite-700 bg-coffee-bean-950 px-4 py-3 text-porcelain-50" />
             </div>
-            <button type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(query))" class="self-end rounded-xl bg-fiery-terracotta-700 px-6 py-3 font-semibold text-porcelain-50 disabled:opacity-50">Search</button>
+            <button type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(query))" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">Search</button>
         </form>
         }
     </div>
@@ -180,6 +180,9 @@
     private List<ArtistSubscription> subscribedArtists = [];
     private Dictionary<int, List<Concert>?> subscribedConcerts = [];
 
+    /// <summary>
+    /// Switches between artist search and subscribed artists, then loads the selected view.
+    /// </summary>
     private async Task ChangeViewAsync(bool subscribed)
     {
         if (busy) return;
@@ -189,6 +192,9 @@
         else if (selectedArtist is not null) await LoadConcertsAsync();
     }
 
+    /// <summary>
+    /// Loads subscribed artists and their upcoming concerts for the selected country.
+    /// </summary>
     private async Task LoadSubscriptionsAsync()
     {
         busy = true;
@@ -220,6 +226,9 @@
         finally { busy = false; }
     }
 
+    /// <summary>
+    /// Restores the session and uses the profile location as the initial concert search country.
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
         await AuthSession.InitializeAsync();
@@ -234,6 +243,9 @@
         busy = false;
     }
 
+    /// <summary>
+    /// Searches for artists matching the entered name and updates the results or error message.
+    /// </summary>
     private async Task SearchAsync()
     {
         if (busy || string.IsNullOrWhiteSpace(query)) return;
@@ -254,6 +266,9 @@
         finally { busy = false; }
     }
 
+    /// <summary>
+    /// Selects an artist and loads their upcoming concerts.
+    /// </summary>
     private async Task SelectArtistAsync(MusicArtist artist)
     {
         if (busy) return;
@@ -261,6 +276,9 @@
         await LoadConcertsAsync();
     }
 
+    /// <summary>
+    /// Reloads concerts for the active view after the selected country changes.
+    /// </summary>
     private async Task CountryChangedAsync()
     {
         locationMessage = "Country selected for this search.";
@@ -268,6 +286,9 @@
         else if (selectedArtist is not null) await LoadConcertsAsync();
     }
 
+    /// <summary>
+    /// Loads upcoming concerts for the selected artist, using the selected or profile country when available.
+    /// </summary>
     private async Task LoadConcertsAsync()
     {
         if (selectedArtist is null) return;
@@ -283,9 +304,15 @@
         finally { busy = false; }
     }
 
+    /// <summary>
+    /// Returns an absolute HTTP or HTTPS ticket URL, or null for an unsupported address.
+    /// </summary>
     private static string? TicketUrl(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri)
         && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) ? uri.AbsoluteUri : null;
 
+    /// <summary>
+    /// Formats the concert date in the venue time zone, falling back to the supplied offset.
+    /// </summary>
     private static string FormatDate(Concert concert)
     {
         try

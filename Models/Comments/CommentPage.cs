@@ -12,7 +12,9 @@ public sealed class CommentPage
 
 	public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling(TotalCount / (double)PageSize);
 
-	// Creates an empty comment page with the requested page number and size.
+	/// <summary>
+	/// Creates an empty comment page with the requested page number and size.
+	/// </summary>
 	public static CommentPage Empty(int page, int pageSize) => new()
 	{
 		Page = page,

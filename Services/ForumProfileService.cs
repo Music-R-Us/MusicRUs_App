@@ -7,13 +7,17 @@ public sealed class ForumProfileService
 	private readonly BackendApiClient apiClient;
 	private readonly Dictionary<(int UserId, string? Token), (Task<ForumProfile?> Load, DateTimeOffset Expires)> profileReads = [];
 
-	// Stores the API client used to read and save forum profiles.
+	/// <summary>
+	/// Stores the API client used to read and save forum profiles.
+	/// </summary>
 	public ForumProfileService(BackendApiClient apiClient)
 	{
 		this.apiClient = apiClient;
 	}
 
-	// Finds an unambiguous exact username or display-name match and loads that user's profile.
+	/// <summary>
+	/// Finds an unambiguous exact username or display-name match and loads that user's profile.
+	/// </summary>
 	public async Task<ForumProfile?> GetProfileAsync(string username, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
 		if (string.IsNullOrWhiteSpace(username))
@@ -52,7 +56,9 @@ public sealed class ForumProfileService
 		return null;
 	}
 
-	// Shares profile requests for ten seconds, separately for each user ID and access token.
+	/// <summary>
+	/// Shares profile requests for ten seconds, separately for each user ID and access token.
+	/// </summary>
 	public async Task<ForumProfile?> GetForumProfileAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
 		if (currentUser is not null && userId == currentUser.UserId)
@@ -79,6 +85,9 @@ public sealed class ForumProfileService
 		return profile;
 	}
 
+	/// <summary>
+	/// Loads the signed-in user's profile from the me endpoint, briefly reusing matching requests.
+	/// </summary>
 	public async Task<ForumProfile?> GetForumProfileMeAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
 		if (userId <= 0 || currentUser is null || currentUser.UserId != userId
@@ -101,7 +110,9 @@ public sealed class ForumProfileService
 		return profile;
 	}
 
-	// Checks whether the user has personalized their forum profile.
+	/// <summary>
+	/// Checks whether the user has personalized their forum profile.
+	/// </summary>
 	public async Task<bool> IsForumProfileSetupCompleteAsync(UserSession user, CancellationToken cancellationToken = default)
 	{
 		if (user.UserId <= 0 || !apiClient.CanUseBackend)
@@ -113,7 +124,9 @@ public sealed class ForumProfileService
 		return IsConfiguredForumProfile(profileFromApi, user);
 	}
 
-	// Creates or updates the profile, then reloads it to confirm favorite artists were saved.
+	/// <summary>
+	/// Creates or updates the profile, then reloads it to confirm favorite artists were saved.
+	/// </summary>
 	public async Task<bool> SaveForumProfileAsync(ForumProfile profile, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
 		if (profile.UserId <= 0)
@@ -181,7 +194,9 @@ public sealed class ForumProfileService
 		return true;
 	}
 
-	// Currently a no-op; profile creation is handled when the setup form is saved.
+	/// <summary>
+	/// Currently a no-op; profile creation is handled when the setup form is saved.
+	/// </summary>
 	public async Task EnsureForumProfileAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
 		if (!apiClient.CanUseBackend || userId <= 0)
@@ -190,7 +205,9 @@ public sealed class ForumProfileService
 		}
 	}
 
-	// Builds the create-profile payload with favorites and genres, then posts it.
+	/// <summary>
+	/// Builds the create-profile payload with favorites and genres, then posts it.
+	/// </summary>
 	private Task<bool> CreateForumProfileAsync(ForumProfile profile, UserSession? currentUser, CancellationToken cancellationToken)
 	{
 		var request = new
@@ -222,7 +239,9 @@ public sealed class ForumProfileService
 		return apiClient.PostAsync($"api/ForumProfile/CreateForumProfile/{profile.UserId}", request, currentUser?.AccessToken, cancellationToken);
 	}
 
-	// Builds a profile update with favorite and genre IDs, then sends it as a PATCH.
+	/// <summary>
+	/// Builds a profile update with favorite and genre IDs, then sends it as a PATCH.
+	/// </summary>
 	private Task<bool> UpdateForumProfileAsync(ForumProfile profile, UserSession? currentUser, CancellationToken cancellationToken)
 	{
 		var request = new UpdateForumProfileRequest
@@ -246,7 +265,9 @@ public sealed class ForumProfileService
 	}
 
 
-	// Treats a profile as configured when at least one personal field differs from its defaults.
+	/// <summary>
+	/// Treats a profile as configured when at least one personal field differs from its defaults.
+	/// </summary>
 	private static bool IsConfiguredForumProfile(ForumProfile? profile, UserSession user)
 	{
 		if (profile is null || profile.UserId <= 0)
@@ -261,7 +282,9 @@ public sealed class ForumProfileService
 			|| IsMeaningfulProfileValue(profile.WebsiteUrl);
 	}
 
-	// Rejects blank, placeholder, or default values when checking profile customization.
+	/// <summary>
+	/// Rejects blank, placeholder, or default values when checking profile customization.
+	/// </summary>
 	private static bool IsMeaningfulProfileValue(string? value, params string[] defaultValues)
 	{
 		if (string.IsNullOrWhiteSpace(value) || string.Equals(value.Trim(), "string", StringComparison.OrdinalIgnoreCase))
@@ -272,7 +295,9 @@ public sealed class ForumProfileService
 		return !defaultValues.Any(defaultValue => string.Equals(value.Trim(), defaultValue, StringComparison.OrdinalIgnoreCase));
 	}
 
-	// Trims nonblank text and converts empty values to null.
+	/// <summary>
+	/// Trims nonblank text and converts empty values to null.
+	/// </summary>
 	private static string? EmptyToNull(string? value)
 	{
 		return string.IsNullOrWhiteSpace(value) ? null : value.Trim();

@@ -30,7 +30,7 @@
 					type="button"
 					@onclick="RunSearchAsync"
 					disabled="@isSearching"
-					class="rounded-2xl border-2 border-porcelain-50/80 bg-pine-teal-700 px-6 py-3 text-sm font-bold text-porcelain-50 shadow-sm shadow-black/20 transition hover:border-porcelain-50 hover:bg-pine-teal-600 disabled:opacity-50">
+					class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">
 					@(isSearching ? "Searching..." : "Search")
 				</button>
 			</div>
@@ -133,7 +133,9 @@
 	private List<MusicArtist> artistResults = [];
 	private List<MusicAlbum> albumResults = [];
 
-	// Searches the catalog using the selected artist or album mode.
+	/// <summary>
+	/// Searches the catalog using the selected artist or album mode.
+	/// </summary>
 	private async Task RunSearchAsync()
 	{
 		var query = searchQuery.Trim();
@@ -181,7 +183,9 @@
 		isSearching = false;
 	}
 
-	// Runs the search when the user presses Enter.
+	/// <summary>
+	/// Runs the search when the user presses Enter.
+	/// </summary>
 	private async Task OnSearchKeyDown(KeyboardEventArgs e)
 	{
 		if (e.Key == "Enter")
@@ -190,7 +194,9 @@
 		}
 	}
 
-	// Changes the search mode and clears previous results.
+	/// <summary>
+	/// Changes the search mode and clears previous results.
+	/// </summary>
 	private void SetMode(string mode)
 	{
 		searchMode = mode;
@@ -199,7 +205,9 @@
 		hasSearched = false;
 	}
 
-	// Returns the styling for an active or inactive search-mode tab.
+	/// <summary>
+	/// Returns the styling for an active or inactive search-mode tab.
+	/// </summary>
 	private string TabClass(string mode) => mode == searchMode
 		? "rounded-full border-2 border-pine-teal-300 bg-pine-teal-400/10 px-4 py-1.5 text-sm font-semibold text-pine-teal-300"
 		: "rounded-full border border-granite-700 bg-granite-900/60 px-4 py-1.5 text-sm font-semibold text-porcelain-50/80 transition hover:text-porcelain-50";

@@ -7,13 +7,17 @@ public sealed class UserLookupService
 {
 	private readonly BackendApiClient apiClient;
 
-	// Stores the API client used to look up user details.
+	/// <summary>
+	/// Stores the API client used to look up user details.
+	/// </summary>
 	public UserLookupService(BackendApiClient apiClient)
 	{
 		this.apiClient = apiClient;
 	}
 
-	// Maps public user details into a session-shaped model without assigning a login token.
+	/// <summary>
+	/// Maps public user details into a session-shaped model without assigning a login token.
+	/// </summary>
 	public async Task<UserSession?> GetUserAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
 		if (!apiClient.CanUseBackend || userId <= 0)

@@ -1,4 +1,4 @@
-﻿@page "/profile/setup"
+@page "/profile/setup"
 @page "/profile/setup/{UserId:int}"
 
 @layout MainLayout
@@ -219,6 +219,7 @@
 					<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="album-search">Favorite album or collection item</label>
+                            <button type="button" disabled="@isSaving" aria-pressed="@showWanted" @onclick="() => showWanted = !showWanted" class="w-fit rounded-full border border-granite-700 px-4 py-2 text-sm text-porcelain-50">@(showWanted ? "Wanted / Switch to Owned" : "Owned / Switch to Wanted")</button>
 							<input id="album-search" value="@albumSearch" @oninput="OnAlbumSearchInputAsync" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" />
 							<p class="text-sm text-porcelain-50/60">Search by album title or artist name. For missing albums, select the artist above first.</p>
 						</div>
@@ -262,9 +263,11 @@
 								</div>
 								<div class="flex flex-wrap gap-2">
 									<button type="button" @onclick="AddFavoriteAlbum" class="rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
-									<label class="grid gap-1 text-sm text-porcelain-50/80">
+									@if (!showWanted)
+                                    {
+                                    <label class="grid gap-1 text-sm text-porcelain-50/80">
 										Media format
-										<select @bind="selectedCollectionFormat" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2">
+										<select disabled="@(showWanted || isSaving)" @bind="selectedCollectionFormat" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2">
 											<option value="">Choose format</option>
 											@foreach (var format in Enum.GetValues<MediaFormat>())
 											{
@@ -272,7 +275,8 @@
 											}
 										</select>
 									</label>
-									<button type="button" disabled="@(selectedCollectionFormat is null || !collectionLoaded)" @onclick="AddCollectionAlbum" class="rounded-2xl border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50">Add collection</button>
+                                    }
+									<button type="button" disabled="@(isSaving || (showWanted ? !wantedLoaded : selectedCollectionFormat is null || !collectionLoaded))" @onclick="AddCollectionAlbum" class="rounded-2xl border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50">Add to @(showWanted ? "wanted" : "owned")</button>
 								</div>
 							</div>
 						}
@@ -289,9 +293,9 @@
 								</div>
 							</div>
 							<div class="grid gap-2">
-								<p class="text-sm font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Music collection</p>
+								<p class="text-sm font-semibold uppercase tracking-[0.2em] text-pine-teal-300">@(showWanted ? "Wanted albums" : "Owned albums")</p>
 								<div class="flex flex-wrap gap-2">
-									@foreach (var album in profileModel.MusicCollection)
+									@foreach (var album in ActiveCollection)
 									{
 										<button type="button" @onclick="() => RemoveCollectionAlbum(album.Id)" class="rounded-full border border-granite-700 bg-granite-900/60 px-3 py-1 text-sm text-porcelain-50">
 											@album.Title x
@@ -335,6 +339,11 @@
 	private readonly Dictionary<int, MediaFormat> newCollectionFormats = [];
 	private MediaFormat? selectedCollectionFormat;
 	private bool collectionLoaded;
+	private bool wantedLoaded;
+	private bool showWanted;
+	private List<MusicCollectionItem> originalWanted = [];
+	private List<MusicAlbum> wantedAlbums = [];
+	private List<MusicAlbum> ActiveCollection => showWanted ? wantedAlbums : profileModel.MusicCollection;
 	private int loadedUserId;
 	private string formMessage = string.Empty;
 	private string genreSearch = string.Empty;
@@ -362,14 +371,20 @@
 	private string selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
 	private string SelectedHex => MusicRUs.Services.ProfileColorService.Normalize(selectedColor);
 	private static readonly string[] PresetColors = ["#66706C", "#2DD4BF", "#F97316", "#3B82F6", "#A855F7", "#EC4899", "#EAB308", "#FFFFFF"];
-	// Restores the default header color in the editor.
+	/// <summary>
+	/// Restores the default header color in the editor.
+	/// </summary>
 	private void ResetColor() => selectedColor = MusicRUs.Services.ProfileColorService.DefaultColor;
-	// Normalizes and stores the header color chosen in the editor.
+	/// <summary>
+	/// Normalizes and stores the header color chosen in the editor.
+	/// </summary>
 	private void PickColor(ChangeEventArgs args) => selectedColor = MusicRUs.Services.ProfileColorService.Normalize(args.Value?.ToString());
 	private string GradientPreviewStyle =>
 		$"--profile-start: {profileModel.PrimaryColor}; " +
 		$"--profile-end: {profileModel.AccentColor};";
-	// Restricts editing to the signed-in user and loads their profile and collection once.
+	/// <summary>
+	/// Restricts editing to the signed-in user and loads their profile and both collection drafts once.
+	/// </summary>
 	protected override async Task OnParametersSetAsync()
 	{
 		var initialized = await AuthSession.InitializeAsync();
@@ -400,6 +415,10 @@
 		collectionLoaded = AuthSession.CollectionError is null;
 		if (!collectionLoaded) formMessage = AuthSession.CollectionError!;
 		profileModel.MusicCollection = originalCollection.Select(item => item.Album ?? new MusicAlbum { Id = item.AlbumId, Title = item.AlbumTitle }).DistinctBy(album => album.Id).ToList();
+		originalWanted = await AuthSession.GetCollectionAsync(resolvedUserId, wanted: true);
+		wantedLoaded = AuthSession.CollectionError is null;
+		if (!wantedLoaded) formMessage = AuthSession.CollectionError!;
+		wantedAlbums = originalWanted.Select(item => item.Album ?? new MusicAlbum { Id = item.AlbumId, Title = item.AlbumTitle }).DistinctBy(album => album.Id).ToList();
 		newCollectionFormats.Clear();
 		selectedColor = await ProfileColors.GetAsync(resolvedUserId);
 		draftFavoriteGenre = profileModel.FavoriteGenre;
@@ -409,7 +428,11 @@
 		isReady = true;
 	}
 
-	// Saves the profile, collection edits, and browser color before returning to the profile.
+	/// <summary>
+
+	/// Saves the profile, collection edits, and browser color before returning to the profile.
+
+	/// </summary>
 	private async Task HandleSaveAsync()
 	{
 		if (isSaving) return;
@@ -448,7 +471,11 @@
 		Navigation.NavigateTo($"/profile/{AuthSession.CurrentUser.UserId}");
 	}
 
-	// Opens the current user's profile, or login if they are signed out.
+	/// <summary>
+
+	/// Opens the current user's profile, or login if they are signed out.
+
+	/// </summary>
 	private void SkipSetup()
 	{
 		if (AuthSession.CurrentUser is null)
@@ -460,7 +487,11 @@
 		Navigation.NavigateTo($"/profile/{AuthSession.CurrentUser.UserId}");
 	}
 
-	// Builds the setup route, including the user's ID when available.
+	/// <summary>
+
+	/// Builds the setup route, including the user's ID when available.
+
+	/// </summary>
 	private static string GetProfileSetupUrl(int userId)
 	{
 		return userId > 0
@@ -468,7 +499,11 @@
 			: "/profile/setup";
 	}
 
-	// Selects a genre suggestion and adds it to the editor's tags if needed.
+	/// <summary>
+
+	/// Selects a genre suggestion and adds it to the editor's tags if needed.
+
+	/// </summary>
 	private void SelectGenre(string genre)
 	{
 		genreSearch = genre;
@@ -478,14 +513,22 @@
 		}
 	}
 
-	// Removes a genre tag and clears the favorite if it used that genre.
+	/// <summary>
+
+	/// Removes a genre tag and clears the favorite if it used that genre.
+
+	/// </summary>
 	private void RemoveGenreTag(string tag)
 	{
 		profileModel.Tags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
 		if (string.Equals(draftFavoriteGenre, tag, StringComparison.OrdinalIgnoreCase)) draftFavoriteGenre = string.Empty;
 	}
 
-	// Updates artist search text, clears the old selection, and schedules a search.
+	/// <summary>
+
+	/// Updates artist search text, clears the old selection, and schedules a search.
+
+	/// </summary>
 	private async Task OnArtistSearchInputAsync(ChangeEventArgs args)
 	{
 		artistSearch = args.Value?.ToString() ?? string.Empty;
@@ -494,7 +537,11 @@
 		await DebounceArtistSearchAsync();
 	}
 
-	// Cancels the previous search and waits for typing to pause before fetching artists.
+	/// <summary>
+
+	/// Cancels the previous search and waits for typing to pause before fetching artists.
+
+	/// </summary>
 	private async Task DebounceArtistSearchAsync()
 	{
 		CancelArtistSearchDebounce();
@@ -536,7 +583,11 @@
 		}
 	}
 
-	// Selects an artist suggestion and closes the search results.
+	/// <summary>
+
+	/// Selects an artist suggestion and closes the search results.
+
+	/// </summary>
 	private void SelectArtistResult(MusicArtist artist)
 	{
 		CancelArtistSearchDebounce();
@@ -547,7 +598,11 @@
 		formMessage = string.Empty;
 	}
 
-	// Adds the selected artist to the draft favorites without duplicates.
+	/// <summary>
+
+	/// Adds the selected artist to the draft favorites without duplicates.
+
+	/// </summary>
 	private void AddFavoriteArtist()
 	{
 		if (artistResult is null || artistResult.Id <= 0 || profileModel.FavoriteArtists.Any(artist => artist.Id == artistResult.Id))
@@ -560,7 +615,11 @@
 		artistSearch = string.Empty;
 	}
 
-	// Removes a favorite artist and clears any matching search selection.
+	/// <summary>
+
+	/// Removes a favorite artist and clears any matching search selection.
+
+	/// </summary>
 	private void RemoveFavoriteArtist(int artistId)
 	{
 		profileModel.FavoriteArtists.RemoveAll(artist => artist.Id == artistId);
@@ -571,7 +630,11 @@
 		}
 	}
 
-	// Updates album search text, clears the old selection, and schedules a search.
+	/// <summary>
+
+	/// Updates album search text, clears the old selection, and schedules a search.
+
+	/// </summary>
 	private async Task OnAlbumSearchInputAsync(ChangeEventArgs args)
 	{
 		albumSearch = args.Value?.ToString() ?? string.Empty;
@@ -580,7 +643,11 @@
 		await DebounceAlbumSearchAsync();
 	}
 
-	// Cancels the previous search and waits for typing to pause before fetching albums.
+	/// <summary>
+
+	/// Cancels the previous search and waits for typing to pause before fetching albums.
+
+	/// </summary>
 	private async Task DebounceAlbumSearchAsync()
 	{
 		CancelAlbumSearchDebounce();
@@ -653,7 +720,11 @@
 		}
 	}
 
-	// Selects an album suggestion and closes the search results.
+	/// <summary>
+
+	/// Selects an album suggestion and closes the search results.
+
+	/// </summary>
 	private void SelectAlbumResult(MusicAlbum album)
 	{
 		CancelAlbumSearchDebounce();
@@ -664,7 +735,11 @@
 		formMessage = string.Empty;
 	}
 
-	// Adds the selected album to the draft favorites without duplicates.
+	/// <summary>
+
+	/// Adds the selected album to the draft favorites without duplicates.
+
+	/// </summary>
 	private void AddFavoriteAlbum()
 	{
 		if (albumResult is null || albumResult.Id <= 0 || profileModel.FavoriteAlbums.Any(album => album.Id == albumResult.Id))
@@ -675,41 +750,60 @@
 		profileModel.FavoriteAlbums.Add(albumResult);
 	}
 
-	// Removes an album from the draft favorites.
+	/// <summary>
+
+	/// Removes an album from the draft favorites.
+
+	/// </summary>
 	private void RemoveFavoriteAlbum(int albumId)
 	{
 		profileModel.FavoriteAlbums.RemoveAll(album => album.Id == albumId);
 	}
 
-	// Stages the selected album and media format for addition to the collection.
+	/// <summary>
+
+	/// Adds the selected album to the active owned or wanted draft; owned albums require a media format.
+
+	/// </summary>
 	private void AddCollectionAlbum()
 	{
-		if (selectedCollectionFormat is null || !collectionLoaded || albumResult is null || profileModel.MusicCollection.Any(album => album.Id == albumResult.Id))
+		if (isSaving || (showWanted ? !wantedLoaded : selectedCollectionFormat is null || !collectionLoaded) || albumResult is null || ActiveCollection.Any(album => album.Id == albumResult.Id))
 		{
 			return;
 		}
 
-		profileModel.MusicCollection.Add(albumResult);
-		newCollectionFormats[albumResult.Id] = selectedCollectionFormat.Value;
+		ActiveCollection.Add(albumResult);
+		if (!showWanted) newCollectionFormats[albumResult.Id] = selectedCollectionFormat!.Value;
 	}
 
-	// Removes a staged collection album and its media-format choice.
+	/// <summary>
+
+	/// Removes an album from the active draft and clears its media-format choice when editing owned albums.
+
+	/// </summary>
 	private void RemoveCollectionAlbum(int albumId)
 	{
-		profileModel.MusicCollection.RemoveAll(album => album.Id == albumId);
-		newCollectionFormats.Remove(albumId);
+		if (isSaving) return;
+		ActiveCollection.RemoveAll(album => album.Id == albumId);
+		if (!showWanted) newCollectionFormats.Remove(albumId);
 	}
 
-	// Saves collection edits only if the original collection loaded successfully.
+	/// <summary>
+
+	/// Saves both owned and wanted drafts only when both original lists loaded successfully.
+
+	/// </summary>
 	private async Task<bool> SaveCollectionChangesAsync()
 	{
-		if (!collectionLoaded)
+		if (!collectionLoaded || !wantedLoaded)
 		{
 			formMessage = "Reload this page before editing the collection; it could not be loaded.";
 			return false;
 		}
-		return await AuthSession.SaveCollectionChangesAsync(profileModel.UserId, originalCollection,
-			profileModel.MusicCollection, newCollectionFormats);
+		if (!await AuthSession.SaveCollectionChangesAsync(profileModel.UserId, originalCollection,
+			profileModel.MusicCollection, newCollectionFormats)) return false;
+		return await AuthSession.SaveCollectionChangesAsync(profileModel.UserId, originalWanted,
+			wantedAlbums, new Dictionary<int, MediaFormat>(), wanted: true);
 	}
 
 	private sealed class ProfileSetupModel
@@ -752,7 +846,11 @@
 
 		public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-		// Creates editable form values from the saved profile, falling back to session defaults.
+		/// <summary>
+
+		/// Creates editable form values from the saved profile, falling back to session defaults.
+
+		/// </summary>
 		public static ProfileSetupModel FromProfile(ForumProfile? profile, UserSession user, int userId)
 		{
 			return new ProfileSetupModel
@@ -779,7 +877,11 @@
 			};
 		}
 
-		// Builds a profile from the form, trimming text and removing duplicate tags.
+		/// <summary>
+
+		/// Builds a profile from the form, trimming text and removing duplicate tags.
+
+		/// </summary>
 		public ForumProfile ToForumProfile()
 		{
 			return new ForumProfile
@@ -805,6 +907,9 @@
 		}
 	}
 
+	/// <summary>
+	/// Trims whitespace from the website address before saving the profile.
+	/// </summary>
 	private static string NormalizeWebsiteUrl(string value)
 	{
 		var url = value.Trim();
@@ -812,14 +917,22 @@
 		return $"{url}";
 	}
 
-	// Cancels pending artist and album searches when leaving the editor.
+	/// <summary>
+
+	/// Cancels pending artist and album searches when leaving the editor.
+
+	/// </summary>
 	public void Dispose()
 	{
 		CancelArtistSearchDebounce();
 		CancelAlbumSearchDebounce();
 	}
 
-	// Cancels the pending artist search and clears its active token reference.
+	/// <summary>
+
+	/// Cancels the pending artist search and clears its active token reference.
+
+	/// </summary>
 	private void CancelArtistSearchDebounce()
 	{
 		var debounce = artistSearchDebounce;
@@ -839,7 +952,11 @@
 
 	}
 
-	// Cancels the pending album search and clears its active token reference.
+	/// <summary>
+
+	/// Cancels the pending album search and clears its active token reference.
+
+	/// </summary>
 	private void CancelAlbumSearchDebounce()
 	{
 		var debounce = albumSearchDebounce;
