@@ -5,12 +5,14 @@
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject MusicRUs.Services.ToastService ToastService
 @inject NavigationManager Navigation
+@inject MusicRUs.Services.ConcertService ConcertApi
+@using MusicRUs.Services
 
 <PageTitle>@(artist?.Name ?? "Artist") – MusicRUs</PageTitle>
 
 @if (isLoading)
 {
-    <div class="text-porcelain-50/60 py-12 text-center">Loading...</div>
+    <div class="rounded-2xl border border-granite-800/80 bg-coffee-bean-950 py-12 text-center text-porcelain-50/80">Loading...</div>
 }
 else if (artist is null)
 {
@@ -28,7 +30,7 @@ else
         <div class="grid gap-8">
             @if (!string.IsNullOrWhiteSpace(AuthSession.CollectionError))
             {
-                <p role="alert" class="rounded-2xl border border-fiery-terracotta-400/40 p-3 text-sm text-fiery-terracotta-300">
+                <p role="alert" class="rounded-2xl border border-fiery-terracotta-400/40 bg-coffee-bean-950 p-3 text-sm text-fiery-terracotta-300">
                     @AuthSession.CollectionError</p>
                 }
 
@@ -49,13 +51,14 @@ else
                         <div class="grid gap-2">
                             <p class="text-xl font-semibold text-porcelain-50">Artist</p>
                             <h1 class="text-5xl font-semibold text-porcelain-50">@artist.Name</h1>
-                            <p class="text-sm text-porcelain-50/80 m-1">@albums.Count album@(albums.Count == 1 ? "" : "s")</p>
+                            <p class="text-sm text-porcelain-50/50 m-1">@albums.Count album@(albums.Count == 1 ? "" : "s")</p>
                         </div>
                     </div>
                 </div>
 
                 @* Albums + tracks *@
-                @if (AuthSession.IsAuthenticated)
+                <div class="flex flex-wrap items-end gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-5 text-porcelain-50">
+                @if (AuthSession.IsAuthenticated && !showConcerts)
                 {
                     <label class="grid max-w-xs gap-1 text-sm text-porcelain-50/80">
                         Media format for albums you add
@@ -69,7 +72,48 @@ else
                         </select>
                     </label>
                 }
-                @if (albums.Count == 0)
+                    <button type="button" @onclick="ToggleConcertsAsync" aria-pressed="@showConcerts"
+                            class="rounded-xl border border-pine-teal-400/60 bg-granite-900 px-4 py-3 font-semibold text-porcelain-50 transition hover:bg-granite-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50">
+                        @(showConcerts ? "Show albums" : "Upcoming concerts")
+                    </button>
+                </div>
+                @if (showConcerts)
+                {
+                    <div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-6 text-porcelain-50" aria-live="polite" aria-busy="@concertsLoading">
+                        <h2 class="text-2xl font-semibold">Upcoming concerts</h2>
+                        <p class="text-sm text-porcelain-50/60">@concertLocationMessage</p>
+                        @if (concertsLoading)
+                        {
+                            <p>Loading concerts…</p>
+                        }
+                        else if (concertError is not null)
+                        {
+                            <p role="alert">@concertError</p>
+                            <button type="button" @onclick="LoadConcertsAsync" class="justify-self-start rounded-xl border border-granite-700 bg-granite-900 px-4 py-2 text-porcelain-50 transition hover:bg-granite-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50">Try again</button>
+                        }
+                        else if (concerts.Count == 0)
+                        {
+                            <p>No upcoming concerts found@(string.IsNullOrEmpty(concertCountryCode) ? "." : $" in {concertCountryCode}.")</p>
+                        }
+                        else
+                        {
+                            @foreach (var concert in concerts)
+                            {
+                                <article class="grid gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-6">
+                                    <h3 class="text-xl font-semibold">@concert.Name</h3>
+                                    <p>@concert.VenueName · @string.Join(", ", new[] { concert.City, concert.Region, concert.CountryCode }.Where(value => !string.IsNullOrWhiteSpace(value)))</p>
+                                    <p>@FormatConcertDate(concert)</p>
+                                    @if (Uri.TryCreate(concert.Url, UriKind.Absolute, out var url)
+                                        && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp))
+                                    {
+                                        <a href="@url.AbsoluteUri" target="_blank" rel="noopener noreferrer" class="text-pine-teal-300 underline">View concert / tickets</a>
+                                    }
+                                </article>
+                            }
+                        }
+                    </div>
+                }
+                else if (albums.Count == 0)
                 {
                     <div
                         class="rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-6 text-center text-porcelain-50/60">
@@ -98,7 +142,7 @@ else
                                     <div class="grid gap-0.5 flex-1 min-w-0">
                                         <a href="@($"/music/album/{album.Id}?fromArtistId={ArtistId}")"
                                            class="text-lg font-semibold text-porcelain-50 transition hover:text-pine-teal-300">@album.Title</a>
-                                        <div class="flex flex-wrap gap-3 text-sm text-porcelain-50/80">
+                                        <div class="flex flex-wrap gap-3 text-sm text-porcelain-50/50">
                                             @if (!string.IsNullOrWhiteSpace(album.AlbumType))
                                             {
                                                 <span class="capitalize">@album.AlbumType</span>
@@ -153,11 +197,23 @@ else
     private Dictionary<int, int> collectionEntryIds = [];
     private int loadingTrackAlbumId;
     private MediaFormat? selectedFormat;
+    private bool showConcerts;
+    private bool concertsLoading;
+    private bool concertsLoaded;
+    private List<Concert> concerts = [];
+    private string concertCountryCode = string.Empty;
+    private string concertLocationMessage = string.Empty;
+    private string? concertError;
 
     // Loads the routed artist's albums and the signed-in user's collection membership.
     protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
+        showConcerts = false;
+        concertsLoaded = false;
+        concertsLoading = false;
+        concerts = [];
+        await AuthSession.InitializeAsync();
         artist = null;
         albums = [];
         albumTracks = [];
@@ -175,6 +231,66 @@ else
         }
 
         isLoading = false;
+    }
+
+    // Fetch concerts only when the user first opens this view.
+    private async Task ToggleConcertsAsync()
+    {
+        showConcerts = !showConcerts;
+        if (showConcerts && !concertsLoaded && !concertsLoading)
+            await LoadConcertsAsync();
+    }
+
+    private async Task LoadConcertsAsync()
+    {
+        var requestedArtistId = ArtistId;
+        concertsLoading = true;
+        concertError = null;
+        try
+        {
+            var user = AuthSession.CurrentUser;
+            var profile = user is { UserId: > 0 }
+                ? await AuthSession.GetForumProfileAsync(user.UserId)
+                : null;
+            var country = CountryCodes.FromLocation(profile?.Location) ?? string.Empty;
+            var results = await ConcertApi.GetByArtistAsync(requestedArtistId, country, user);
+            // Ignore responses from an artist the user has navigated away from.
+            if (ArtistId != requestedArtistId) return;
+            concertCountryCode = country;
+            concertLocationMessage = country.Length > 0
+                ? $"Showing concerts in {country}, using your profile location."
+                : "Showing concerts in all countries because no profile country is available.";
+            if (results is null)
+                concertError = "Could not load concerts. Please try again.";
+            else
+            {
+                concerts = results.Where(concert => concert.StartsAt >= DateTimeOffset.UtcNow)
+                    .OrderBy(concert => concert.StartsAt).ToList();
+                concertsLoaded = true;
+            }
+        }
+        catch (Exception)
+        {
+            if (ArtistId == requestedArtistId)
+                concertError = "Could not load concerts. Please try again.";
+        }
+        finally
+        {
+            if (ArtistId == requestedArtistId) concertsLoading = false;
+        }
+    }
+
+    private static string FormatConcertDate(Concert concert)
+    {
+        try
+        {
+            var zone = TimeZoneInfo.FindSystemTimeZoneById(concert.VenueTimeZone);
+            return $"{TimeZoneInfo.ConvertTime(concert.StartsAt, zone):ddd, d MMM yyyy · HH:mm} ({concert.VenueTimeZone})";
+        }
+        catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException)
+        {
+            return $"{concert.StartsAt:ddd, d MMM yyyy · HH:mm zzz}";
+        }
     }
 
     // Loads and stores an album's tracks while showing its loading indicator.

@@ -6,14 +6,6 @@
 @source "../wwwroot/index.html";
 
 @theme {
-    /* Pale foregrounds and dark action backgrounds provide AA text contrast. */
-    --color-pine-teal-100: #d4f3eb;
-    --color-pine-teal-200: #a9e7d7;
-    --color-pine-teal-300: #7ddbc3;
-    --color-pine-teal-400: #55c5aa;
-    --color-pine-teal-600: #246858;
-    --color-pine-teal-700: #1b4e42;
-
 	--color-coffee-bean-50: #f5f0f0;
 	--color-coffee-bean-100: #eae1e1;
 	--color-coffee-bean-200: #d5c3c3;
@@ -84,9 +76,9 @@
 		border: 1px solid rgb(42 59 60 / 0.9);
 		border-radius: 1.5rem;
 		background:
-			radial-gradient(circle at top right, rgba(85, 170, 153, 0.08), transparent 34%),
-			radial-gradient(circle at bottom left, rgba(230, 53, 25, 0.06), transparent 30%),
-			linear-gradient(135deg, rgba(46, 11, 5, 0.96), rgba(92, 21, 10, 0.96));
+			radial-gradient(circle at top right, rgba(85, 170, 153, 0.18), transparent 34%),
+			radial-gradient(circle at bottom left, rgba(230, 53, 25, 0.14), transparent 30%),
+			linear-gradient(135deg, rgba(46, 11, 5, 0.96), rgba(184, 42, 20, 0.82));
 		box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.3);
 	}
 
@@ -94,7 +86,7 @@
 		content: "";
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(180deg, rgba(255, 255, 229, 0.03), rgba(255, 255, 255, 0));
+		background: linear-gradient(180deg, rgba(255, 255, 229, 0.08), rgba(255, 255, 255, 0));
 		pointer-events: none;
 	}
 }

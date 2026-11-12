@@ -202,7 +202,8 @@ public sealed class ForumProfileService
 			DisplayName = EmptyToNull(profile.DisplayName),
 			Bio = EmptyToNull(profile.Bio),
 			AvatarUrl = EmptyToNull(profile.AvatarUrl),
-			Location = EmptyToNull(profile.Location),
+			// An empty string explicitly clears a previously selected country.
+			Location = profile.Location.Trim(),
 			FavoriteArtistIds = profile.FavoriteArtists.Select(artist => artist.Id).Where(id => id > 0).Distinct().ToList(),
 			FavoriteAlbumIds = profile.FavoriteAlbums.Select(album => album.Id).Where(id => id > 0).Distinct().ToList(),
 			GenreIds = profile.Genres.Select(genre => genre.Id).Where(id => id > 0).Distinct().ToList(),

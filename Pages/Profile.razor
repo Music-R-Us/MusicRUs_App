@@ -15,7 +15,7 @@
 		<p role="alert" class="p-3 text-sm text-fiery-terracotta-300">@AuthSession.CollectionError</p>
 	}
 	<div class="grid gap-6 rounded-4xl border border-granite-800/80 bg-linear-to-br from-(--profile-start) to-(--profile-end) p-8 shadow-xl backdrop-blur" style="@ProfileBackgroundStyle">
-		<div class="flex flex-col gap-5 rounded-2xl bg-coffee-bean-950 p-5 sm:flex-row sm:items-center sm:justify-between">
+		<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-5">
 				@if (HasAvatar)
 				{
@@ -41,7 +41,7 @@
 					</a>
 					<button type="button"
 						@onclick="SignOutAsync"
-						class="self-start rounded-full bg-fiery-terracotta-600 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-700 sm:self-center">
+						class="self-start rounded-full bg-fiery-terracotta-500/90 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-500/70 sm:self-center">
 						Log Out
 					</button>
 				</div>
@@ -52,7 +52,7 @@
 		{
 			@if (CurrentProfile.IsPublic == true || CurrentProfile.UserId == AuthSession.CurrentUser?.UserId)
 			{
-				<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-5 text-porcelain-50/80">
+				<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
 					<div>
 						<p class="text-xl font-semibold text-porcelain-50">Profile Information</p>
 					</div>
@@ -81,7 +81,7 @@
 				</div>
 
 				<div class="grid gap-6 sm:grid-cols-2">
-					<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-5">
+					<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
 						<h2 class="text-xl font-semibold text-porcelain-50">Favorite artists</h2>
 						@if (CurrentProfile.FavoriteArtists.Count == 0)
 						{
@@ -100,7 +100,7 @@
 							</div>
 						}
 					</div>
-					<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-5">
+					<div class="grid content-start gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
 						<h2 class="text-xl font-semibold text-porcelain-50">Favorite albums</h2>
 						@if (CurrentProfile.FavoriteAlbums.Count == 0)
 						{
@@ -125,7 +125,7 @@
 						}
 
 					</div>
-					<div class="grid content-start gap-4 self-start rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-5 text-porcelain-50/80 sm:col-span-2">
+					<div class="grid content-start gap-4 self-start rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80 sm:col-span-2">
 						@if (Collection.Count > 0)
 						{
 							<div class="grid gap-3">
@@ -172,7 +172,7 @@
 									}
 									else
 									{
-										<p class="px-1 text-sm text-porcelain-50/80">and @(Collection.Count - 5) more...</p>
+										<p class="px-1 text-sm text-porcelain-50/40">and @(Collection.Count - 5) more...</p>
 									}
 								}
 							</div>
@@ -195,7 +195,7 @@
 			}
 			else
 			{
-				<div class="grid gap-2 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-5 text-porcelain-50/80">
+				<div class="grid gap-2 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
 					<p class="text-xl font-semibold text-porcelain-50">This profile is private.</p>
 					<p class="text-sm text-porcelain-50/70">The user has chosen to keep their profile information and music collection private.</p>
 				</div>

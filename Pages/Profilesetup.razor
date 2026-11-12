@@ -4,11 +4,13 @@
 @layout MainLayout
 
 @using System.ComponentModel.DataAnnotations
+@using MusicRUs.Services
 @implements IDisposable
 
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject NavigationManager Navigation
 @inject MusicRUs.Services.ProfileColorService ProfileColors
+
 @inject MusicRUs.Services.ToastService ToastService
 
 <PageTitle>Set up profile</PageTitle>
@@ -75,39 +77,17 @@
 									Start color
 								</label>
 
-								<input id="gradient-start"
-									type="color"
-									@bind="profileModel.PrimaryColor"
-									@bind:event="oninput"
-									disabled="@isSaving"
-									class="h-12 w-full cursor-pointer rounded-xl border
-											border-granite-800 bg-coffee-bean-950 p-1
-											focus-visible:outline-2
-											focus-visible:outline-granite-300" />
+								<input id="gradient-start" type="color" @bind="profileModel.PrimaryColor" @bind:event="oninput" disabled="@isSaving" class="h-12 w-full cursor-pointer rounded-xl border border-granite-800 bg-coffee-bean-950 p-1 focus-visible:outline-2 focus-visible:outline-granite-300" />
 							</div>
 
 							<div class="grid gap-2">
-								<label for="gradient-end"
-									class="text-sm font-medium text-porcelain-50">
-									End color
-								</label>
+								<label for="gradient-end" class="text-sm font-medium text-porcelain-50">End color</label>
 
-								<input id="gradient-end"
-									type="color"
-									@bind="profileModel.AccentColor"
-									@bind:event="oninput"
-									disabled="@isSaving"
-									class="h-12 w-full cursor-pointer rounded-xl border
-											border-granite-800 bg-coffee-bean-950 p-1
-											focus-visible:outline-2
-											focus-visible:outline-granite-300" />
+								<input id="gradient-end" type="color" @bind="profileModel.AccentColor" @bind:event="oninput" disabled="@isSaving" class="h-12 w-full cursor-pointer rounded-xl border border-granite-800 bg-coffee-bean-950 p-1 focus-visible:outline-2 focus-visible:outline-granite-300" />
 							</div>
 							<div class="rounded-2xl bg-linear-to-br from-(--profile-start) to-(--profile-end) p-6"style="@GradientPreviewStyle">
 								<div class="rounded-xl bg-coffee-bean-950/80 p-4">
-									<p class="text-xs font-semibold uppercase tracking-widest
-											text-granite-300">
-										Preview
-									</p>
+									<p class="text-xs font-semibold uppercase tracking-widest text-granite-300">Preview</p>
 
 									<p class="mt-2 text-2xl font-semibold text-porcelain-50">
 										@profileModel.DisplayName
@@ -123,8 +103,17 @@
 						</div>
 
 						<div class="grid gap-2">
-							<label class="text-sm font-medium text-porcelain-50" for="location">Location</label>
-							<InputText id="location" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.Location" />
+							<label for="profile-location">Country</label>
+							<select id="profile-location" @bind="profileModel.Location" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50">
+								<option value="">Prefer not to share</option>
+
+								@foreach (var country in CountryCodes.Countries)
+								{
+									<option value="@country.Code">
+										@country.Name (@country.Code)
+									</option>
+								}
+							</select>
 						</div>
 					</div>
 
@@ -177,7 +166,7 @@
 
 					<div class="grid gap-2">
 						<label class="text-sm font-medium text-porcelain-50" for="website-url">Website URL</label>
-						<InputText id="website-url" type="url" name="website-url" autocomplete="url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.WebsiteUrl" />
+						<InputText id="website-url" type="text" inputmode="url" placeholder="example.com" name="website-url" autocomplete="url" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.WebsiteUrl" />
 					</div>
 
 					<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
@@ -214,7 +203,7 @@
 									}
 									<p class="font-semibold text-porcelain-50">@artistResult.Name</p>
 								</div>
-								<button type="button" @onclick="AddFavoriteArtist" class="rounded-2xl bg-fiery-terracotta-600 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
+								<button type="button" @onclick="AddFavoriteArtist" class="rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
 							</div>
 						}
 						<div class="flex flex-wrap gap-2">
@@ -272,7 +261,7 @@
 									</div>
 								</div>
 								<div class="flex flex-wrap gap-2">
-									<button type="button" @onclick="AddFavoriteAlbum" class="rounded-2xl bg-fiery-terracotta-600 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
+									<button type="button" @onclick="AddFavoriteAlbum" class="rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50">Add favorite</button>
 									<label class="grid gap-1 text-sm text-porcelain-50/80">
 										Media format
 										<select @bind="selectedCollectionFormat" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2">
@@ -327,7 +316,7 @@
 						<button type="button" @onclick="SkipSetup" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-5 py-3 text-base font-semibold text-porcelain-50/80 transition hover:text-porcelain-50">
 							Skip for now
 						</button>
-						<button type="submit" disabled="@isSaving" class="rounded-2xl bg-fiery-terracotta-600 px-5 py-3 text-base font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-700 disabled:cursor-not-allowed disabled:opacity-60">
+						<button type="submit" disabled="@isSaving" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-base font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
 							@(isSaving ? "Saving..." : "Save profile")
 						</button>
 					</div>
@@ -352,6 +341,7 @@
 	private string draftFavoriteGenre = string.Empty;
 	private string artistSearch = string.Empty;
 	private string albumSearch = string.Empty;
+	private string countryCode = string.Empty;
 	private List<GenreOption> genres = [];
 	private List<MusicArtist> artistResults = [];
 	private List<MusicAlbum> albumResults = [];
@@ -805,7 +795,7 @@
 				FavoriteArtists = FavoriteArtists.ToList(),
 				FavoriteAlbums = FavoriteAlbums.ToList(),
 				MusicCollection = MusicCollection.ToList(),
-				WebsiteUrl = WebsiteUrl.Trim(),
+				WebsiteUrl = NormalizeWebsiteUrl(WebsiteUrl),
 				IsPublic = IsPublic,
 				PrimaryColor = PrimaryColor,
 				AccentColor = AccentColor,
@@ -813,6 +803,13 @@
 				UpdatedAt = DateTimeOffset.UtcNow
 			};
 		}
+	}
+
+	private static string NormalizeWebsiteUrl(string value)
+	{
+		var url = value.Trim();
+		if (url.Length == 0) return string.Empty;
+		return $"{url}";
 	}
 
 	// Cancels pending artist and album searches when leaving the editor.

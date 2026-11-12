@@ -50,7 +50,7 @@ else
                             }
                         }
                     </div>
-                    <div class="flex flex-wrap gap-3 text-sm text-porcelain-50/80">
+                    <div class="flex flex-wrap gap-3 text-sm text-porcelain-50/50">
                         @if (!string.IsNullOrWhiteSpace(album.ReleaseDate))
                         {
                             <span>@album.ReleaseDate</span>
@@ -75,7 +75,7 @@ else
                     @foreach (var track in tracks)
                     {
                         <li class="flex items-center gap-4 px-5 py-4 transition hover:bg-granite-900/40">
-                            <span class="w-8 shrink-0 text-right text-sm tabular-nums text-porcelain-50/80">@(track.TrackNumber?.ToString() ?? "–")</span>
+                            <span class="w-8 shrink-0 text-right text-sm tabular-nums text-porcelain-50/40">@(track.TrackNumber?.ToString() ?? "–")</span>
                             <div class="grid min-w-0 flex-1 gap-1">
                                 <div class="flex items-center gap-2">
                                     <p class="wrap-break-words font-medium text-porcelain-50">@track.Title</p>
@@ -86,14 +86,14 @@ else
                                 </div>
                                 @if (track.Artists.Count > 0)
                                 {
-                                    <p class="truncate text-sm text-porcelain-50/80">@string.Join(", ", track.Artists.Select(artist => artist.Name))</p>
+                                    <p class="truncate text-sm text-porcelain-50/50">@string.Join(", ", track.Artists.Select(artist => artist.Name))</p>
                                 }
                                 @if (showDiscNumbers)
                                 {
-                                    <p class="text-xs text-porcelain-50/80">Disc @(track.DiscNumber ?? 1)</p>
+                                    <p class="text-xs text-porcelain-50/40">Disc @(track.DiscNumber ?? 1)</p>
                                 }
                             </div>
-                            <span class="shrink-0 text-sm tabular-nums text-porcelain-50/80">@track.DurationFormatted</span>
+                            <span class="shrink-0 text-sm tabular-nums text-porcelain-50/50">@track.DurationFormatted</span>
                         </li>
                     }
                 </ol>

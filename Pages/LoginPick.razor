@@ -33,12 +33,12 @@
 
 		<div class="grid grid-cols-2 gap-4">
 			<button type="button"
-				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Login ? "border-fiery-terracotta-300 bg-fiery-terracotta-600 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
+				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Login ? "border-fiery-terracotta-300 bg-fiery-terracotta-500 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
 				@onclick="ShowLogin">
 				Login
 			</button>
 			<button type="button"
-				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Signup ? "border-fiery-terracotta-300 bg-fiery-terracotta-600 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
+				class="rounded-2xl border px-5 py-4 text-lg font-semibold transition @(currentMode == AuthMode.Signup ? "border-fiery-terracotta-300 bg-fiery-terracotta-500 text-porcelain-50" : "border-granite-800/80 bg-fiery-terracotta-900/80 text-porcelain-50/80 hover:text-porcelain-50")"
 				@onclick="ShowSignup">
 				Signup
 			</button>
@@ -66,7 +66,7 @@
 						</button>
 					</div>
 
-					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-600 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-700 disabled:cursor-not-allowed disabled:opacity-60">
+					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
 						@(isSubmitting ? "Logging in..." : "Log in")
 					</button>
 				</div>
@@ -111,7 +111,7 @@
 						</div>
 					</div>
 
-					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-600 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-700 disabled:cursor-not-allowed disabled:opacity-60">
+					<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
 						@(isSubmitting ? "Creating account..." : "Create account")
 					</button>
 				</div>
