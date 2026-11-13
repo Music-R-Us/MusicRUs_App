@@ -1,0 +1,137 @@
+@inject MusicRUs.Services.TwoFactorService TwoFactor
+@inject MusicRUs.Services.ToastService ToastService
+
+@* Lets the logged-in user turn two-factor authentication on and off *@
+<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
+	<h2 class="text-xl font-semibold text-porcelain-50">Two-factor authentication</h2>
+
+	@if (!string.IsNullOrWhiteSpace(message))
+	{
+		<p role="alert" class="text-sm text-fiery-terracotta-300">@message</p>
+	}
+
+	@if (isLoading)
+	{
+		<p class="text-sm">Loading...</p>
+	}
+	else if (isEnabled is null)
+	{
+		<p class="text-sm">Could not load the 2FA status. Try reloading the page.</p>
+	}
+	else if (isEnabled == true)
+	{
+		<p class="text-sm">2FA is <span class="font-semibold text-porcelain-50">on</span>. Enter a code from your authenticator app to turn it off.</p>
+		<form @onsubmit="DisableAsync" @onsubmit:preventDefault class="flex flex-wrap items-center gap-3">
+			<input @bind="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" aria-label="6-digit code"
+			       class="w-32 rounded-xl border border-granite-800/80 bg-coffee-bean-950/80 px-3 py-2 text-porcelain-50 outline-none focus:border-fiery-terracotta-300" />
+			<button type="submit" disabled="@isBusy"
+			        class="rounded-full bg-fiery-terracotta-500/90 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-500/70 disabled:opacity-60">
+				Turn off 2FA
+			</button>
+		</form>
+	}
+	else if (setup is null)
+	{
+		<p class="text-sm">Protect your account with a 6-digit code from an authenticator app, for example Google or Microsoft Authenticator.</p>
+		<button type="button" @onclick="StartSetupAsync" disabled="@isBusy"
+		        class="justify-self-start rounded-full bg-fiery-terracotta-500/90 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-500/70 disabled:opacity-60">
+			Turn on 2FA
+		</button>
+	}
+	else
+	{
+		<p class="text-sm">1. Scan the QR code with your authenticator app.</p>
+		<img src="@setup.QrCodeDataUri" alt="QR code for two-factor authentication" class="h-48 w-48 rounded-lg bg-white p-2" />
+		<p class="text-sm">Can't scan it? Enter this key manually: <code class="break-all font-mono text-porcelain-50">@setup.Secret</code></p>
+		<p class="text-sm">2. Enter the 6-digit code from the app to confirm.</p>
+		<form @onsubmit="EnableAsync" @onsubmit:preventDefault class="flex flex-wrap items-center gap-3">
+			<input @bind="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" aria-label="6-digit code"
+			       class="w-32 rounded-xl border border-granite-800/80 bg-coffee-bean-950/80 px-3 py-2 text-porcelain-50 outline-none focus:border-fiery-terracotta-300" />
+			<button type="submit" disabled="@isBusy"
+			        class="rounded-full bg-fiery-terracotta-500/90 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-500/70 disabled:opacity-60">
+				Confirm
+			</button>
+			<button type="button" @onclick="CancelSetup"
+			        class="rounded-full border border-granite-300/60 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-granite-300 transition hover:bg-granite-800">
+				Cancel
+			</button>
+		</form>
+	}
+</div>
+
+@code {
+	private bool isLoading = true;
+	private bool? isEnabled;        // null if the status could not be loaded
+	private TwoFactorSetup? setup;  // set while the QR code is shown
+	private string code = string.Empty;
+	private string message = string.Empty;
+	private bool isBusy;
+
+	protected override async Task OnInitializedAsync()
+	{
+		isEnabled = await TwoFactor.IsEnabledAsync();
+		isLoading = false;
+	}
+
+	// Step 1: get a new secret and show the QR code
+	private async Task StartSetupAsync()
+	{
+		isBusy = true;
+		message = string.Empty;
+
+		setup = await TwoFactor.SetupAsync();
+		isBusy = false;
+
+		if (setup is null)
+		{
+			message = "Could not start the 2FA setup. Try again.";
+		}
+	}
+
+	// Step 2: confirm with the first code from the app
+	private async Task EnableAsync()
+	{
+		isBusy = true;
+		message = string.Empty;
+
+		var ok = await TwoFactor.EnableAsync(code);
+		isBusy = false;
+		code = string.Empty;
+
+		if (!ok)
+		{
+			message = "Invalid code. Use the newest code from the app.";
+			return;
+		}
+
+		isEnabled = true;
+		setup = null;
+		ToastService?.Show("Two-factor authentication is on");
+	}
+
+	private async Task DisableAsync()
+	{
+		isBusy = true;
+		message = string.Empty;
+
+		var ok = await TwoFactor.DisableAsync(code);
+		isBusy = false;
+		code = string.Empty;
+
+		if (!ok)
+		{
+			message = "Invalid code. Use the newest code from the app.";
+			return;
+		}
+
+		isEnabled = false;
+		ToastService?.Show("Two-factor authentication is off");
+	}
+
+	private void CancelSetup()
+	{
+		setup = null;
+		code = string.Empty;
+		message = string.Empty;
+	}
+}

@@ -18,6 +18,7 @@ builder.Services.AddScoped<UserLookupService>();
 builder.Services.AddScoped<PostFeedService>();
 builder.Services.AddScoped<MusicCatalogService>();
 builder.Services.AddScoped<ConcertService>();
+builder.Services.AddScoped<TwoFactorService>();
 builder.Services.AddScoped<ArtistSubscriptionService>();
 
 builder.RootComponents.Add<App>("#app");

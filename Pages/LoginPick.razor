@@ -18,9 +18,11 @@
 				@(currentMode == AuthMode.Login ? "Login" : "Signup")
 			</h1>
 			<p class="mt-3 text-base leading-7 text-porcelain-50/80 sm:text-lg">
-				@(currentMode == AuthMode.Login
-					? "Sign in with your username and password."
-					: "Create an account with a few extra details.")
+				@(twoFactorToken is not null
+					? "Your account is protected with two-factor authentication."
+					: currentMode == AuthMode.Login
+						? "Sign in with your username or e-mail and password."
+						: "Create an account with a few extra details.")
 			</p>
 		</div>
 
@@ -44,14 +46,34 @@
 			</button>
 		</div>
 
-		@if (currentMode == AuthMode.Login)
+		@if (twoFactorToken is not null)
+		{
+			@* Second step of login: shown when the API answers 202 because the user has 2FA enabled *@
+			<form @onsubmit="HandleTwoFactorSubmit" @onsubmit:preventDefault class="grid gap-5">
+				<div class="grid gap-2">
+					<label class="text-sm font-medium text-porcelain-50" for="two-factor-code">Enter the 6-digit code from your authenticator app</label>
+					<input id="two-factor-code" @bind="twoFactorCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+					       class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" />
+				</div>
+
+				<button type="submit" disabled="@isSubmitting" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-lg font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
+					@(isSubmitting ? "Verifying..." : "Verify")
+				</button>
+
+				<button type="button" @onclick="CancelTwoFactor"
+				        class="min-h-11 justify-self-start rounded-lg px-3 py-2 text-sm font-semibold text-porcelain-50 underline underline-offset-4 hover:bg-fiery-terracotta-800">
+					Back to login
+				</button>
+			</form>
+		}
+		else if (currentMode == AuthMode.Login)
 		{
 			<EditForm Model="loginModel" OnValidSubmit="HandleLoginSubmit">
 				<DataAnnotationsValidator />
 				<ValidationSummary class="text-sm text-fiery-terracotta-200" />
 				<div class="grid gap-5">
 					<div class="grid gap-2">
-						<label class="text-sm font-medium text-porcelain-50" for="login-username">Username</label>
+						<label class="text-sm font-medium text-porcelain-50" for="login-username">Username or e-mail</label>
 						<InputText id="login-username" name="login-username" autocomplete="username" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="loginModel.Username" />
 					</div>
 
@@ -146,6 +168,12 @@
 	private string formMessage = string.Empty;
 	private DotNetObjectReference<LoginPick>? dotNetReference;
 
+	/// <summary>
+	/// Set when login answers 202 (2FA enabled). The code form is shown while this is not null
+	/// </summary>
+	private string? twoFactorToken;
+	private string twoFactorCode = string.Empty;
+
 	private readonly LoginModel loginModel = new();
 	private readonly SignupModel signupModel = new();
 
@@ -184,7 +212,7 @@
 	/// </summary>
 	private void ShowLogin()
 	{
-		formMessage = string.Empty;
+		CancelTwoFactor();
 		currentMode = AuthMode.Login;
 		ResetPasswordVisibility();
 	}
@@ -194,11 +222,20 @@
 	/// </summary>
 	private void ShowSignup()
 	{
-		formMessage = string.Empty;
+		CancelTwoFactor();
 		currentMode = AuthMode.Signup;
 		ResetPasswordVisibility();
 	}
 
+	/// <summary>
+	/// Leaves the 2FA step and goes back to the normal form
+	/// </summary>
+	private void CancelTwoFactor()
+	{
+		twoFactorToken = null;
+		twoFactorCode = string.Empty;
+		formMessage = string.Empty;
+	}
 	/// <summary>
 	/// Signs in with the entered credentials and redirects or shows the returned error.
 	/// </summary>
@@ -209,6 +246,12 @@
 
 		var result = await AuthSession.LoginAsync(loginModel.Username, loginModel.Password);
 		isSubmitting = false;
+
+		if (result.RequiresTwoFactor)
+		{
+			twoFactorToken = result.TwoFactorToken;
+			return;
+		}
 
 		if (!result.IsSuccess || result.User is null)
 		{
@@ -261,6 +304,13 @@
 		var result = await AuthSession.GoogleLoginAsync(idToken);
 		isSubmitting = false;
 
+		if (result.RequiresTwoFactor)
+		{
+			twoFactorToken = result.TwoFactorToken;
+			await InvokeAsync(StateHasChanged);
+			return;
+		}
+
 		if (!result.IsSuccess || result.User is null)
 		{
 			formMessage = result.ErrorMessage ?? "Google login failed.";
@@ -269,10 +319,39 @@
 		}
 
 		ToastService?.Show("Logged in with google successfully");
-		
+
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
+	/// <summary>
+	/// Second step of login: sends the 2FA code and redirects when it is accepted
+	/// </summary>
 
+	
+	private async Task HandleTwoFactorSubmit()
+	{
+		if (twoFactorToken is null)
+		{
+			return;
+		}
+
+		isSubmitting = true;
+		formMessage = string.Empty;
+
+		var result = await AuthSession.VerifyTwoFactorAsync(twoFactorToken, twoFactorCode);
+		isSubmitting = false;
+
+		if (!result.IsSuccess || result.User is null)
+		{
+			formMessage = result.ErrorMessage ?? "Invalid code.";
+			twoFactorCode = string.Empty;
+			return;
+		}
+
+		twoFactorToken = null;
+		ToastService?.Show("Logged in successfully");
+
+		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
+	}
 	/// <summary>
 	/// Sends users to their profile or setup depending on whether their profile is configured.
 	/// </summary>
