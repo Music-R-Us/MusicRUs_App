@@ -16,7 +16,9 @@ public sealed class UserSession
 
 	public string AccessToken { get; set; } = string.Empty;
 
-	// Normalizes session details and supplies display-name and avatar defaults.
+	/// <summary>
+	/// Normalizes session details and supplies display-name and avatar defaults.
+	/// </summary>
 	public static UserSession Create(string username, string? displayName = null, string? avatarUrl = null, string? accessToken = null, int userId = 0)
 	{
 		var normalizedUsername = username.Trim();

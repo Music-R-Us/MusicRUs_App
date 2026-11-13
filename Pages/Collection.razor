@@ -1,4 +1,4 @@
-﻿@page "/collection"
+@page "/collection"
 
 @layout MainLayout
 
@@ -14,7 +14,7 @@
 
         <div class="grid gap-3">
             <p class="text-xl font-semibold text-pine-teal-300">Library</p>
-            <h1 class="text-4xl font-semibold text-porcelain-50 sm:text-5xl">My Collection</h1>
+            <h1 class="text-4xl font-semibold text-porcelain-50 sm:text-5xl">@(Wanted ? "Wanted albums" : "Owned albums")</h1>
             <p class="max-w-2xl text-base text-porcelain-50/80">
                 Albums you've added to your personal collection.
             </p>
@@ -46,14 +46,14 @@
                 }
 
 
+                <button type="button" disabled="@isBusy" aria-pressed="@Wanted" @onclick="SwitchCollectionAsync" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">@(Wanted ? "Wanted / Switch to Owned" : "Owned / Switch to Wanted")</button>
                 @if (isEditing)
                 {
                     <div class="grid gap-4 rounded-2xl border border-granite-800/80 gradient-surface p-6 backdrop-blur">
                         <div class="flex items-center justify-between">
                             <p class="text-sm font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Add album to collection
                             </p>
-                            <button type="button" @onclick="() => isEditing = false"
-                                    class="text-sm text-porcelain-50/75 transition hover:text-porcelain-50">✕ Close</button>
+                            <button type="button" @onclick="() => isEditing = false"class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">X Close</button>
                         </div>
                         <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
                             <input
@@ -61,7 +61,7 @@
                             placeholder="Album title..." @bind="albumSearchQuery" @bind:event="oninput"
                             @onkeydown="OnSearchKeyDown" />
                             <button type="button" @onclick="SearchAlbumAsync" disabled="@isSearching"
-                                    class="rounded-2xl border-2 border-porcelain-50/80 bg-pine-teal-700 px-5 py-3 text-sm font-bold text-porcelain-50 shadow-sm shadow-black/20 transition hover:border-porcelain-50 hover:bg-pine-teal-600 disabled:opacity-50">
+                                    class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">
                                 @(isSearching ? "..." : "Find")
                             </button>
                         </div>
@@ -73,8 +73,7 @@
                                 <div class="flex items-center gap-3">
                                     @if (!string.IsNullOrWhiteSpace(searchedAlbum.ImageUrl))
                                     {
-                                        <img src="@searchedAlbum.ImageUrl" alt="@searchedAlbum.Title"
-                                             class="h-14 w-14 rounded-xl object-cover" />
+                                        <img src="@searchedAlbum.ImageUrl" alt="@searchedAlbum.Title" class="h-14 w-14 rounded-xl object-cover" />
                                     }
                                     <div>
                                         <p class="font-semibold text-porcelain-50">@searchedAlbum.Title</p>
@@ -90,17 +89,15 @@
                                 </div>
                                 @if (collection.Any(c => c.AlbumId == searchedAlbum.Id))
                                 {
-                                    <span
-                                        class="rounded-full border border-pine-teal-400/60 px-3 py-1.5 text-xs font-semibold text-pine-teal-300">
-                                        Already in collection
-                                    </span>
+                                    <span class="rounded-full border border-pine-teal-400/60 px-3 py-1.5 text-xs font-semibold text-pine-teal-300">Already in collection</span>
                                 }
                                 else
                                 {
+                                    @if (!Wanted)
+                                    {
                                     <label class="grid gap-1 text-sm text-porcelain-50/80">
                                         Media format
-                                        <select @bind="selectedFormat"
-                                                class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2 text-porcelain-50">
+                                        <select disabled="@Wanted" @bind="selectedFormat" class="rounded-xl border border-granite-700 bg-coffee-bean-950 px-3 py-2 text-porcelain-50">
                                             <option value="">Choose format</option>
                                             @foreach (var format in Enum.GetValues<MediaFormat>())
                                             {
@@ -108,9 +105,10 @@
                                             }
                                         </select>
                                     </label>
-                                    <button type="button" @onclick="AddSearchedAlbumAsync" disabled="@(selectedFormat is null)"
-                                            class="self-start rounded-2xl bg-fiery-terracotta-500 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 sm:self-center">
-                                        + Add to collection
+                                    }
+                                    <button type="button" @onclick="AddSearchedAlbumAsync" disabled="@(isBusy || (!Wanted && selectedFormat is null))"
+                                            class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">
+                                        + Add to @(Wanted ? "wanted" : "owned")
                                     </button>
                                 }
                             </div>
@@ -149,7 +147,7 @@
                                 class="group relative flex items-center gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-4 transition hover:border-granite-700">
                                 @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
                                 {
-                                    <a href="/music/album/@item.Album?.Id">
+                                    <a href="/music/album/@(item.Album?.Id ?? item.AlbumId)">
                                         <img src="@item.ImageUrl" alt="@item.AlbumTitle" class="h-14 w-14 rounded-lg object-cover" />
                                     </a>
                                 }
@@ -161,7 +159,7 @@
                                     </div>
                                 }
                                 <div class="grid gap-0.5 min-w-0 flex-1">
-                                    <a href="/music/album/@item.Album?.Id" class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</a>
+                                    <a href="/music/album/@(item.Album?.Id ?? item.AlbumId)" class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</a>
                                     @if (!string.IsNullOrWhiteSpace(item.ArtistNames))
                                     {
                                         <a href="/music/artist/@item.Album?.ArtistId" class="truncate text-sm text-porcelain-50/80">@item.ArtistNames</a>
@@ -185,7 +183,22 @@
     </section>
 
 @code {
+    [SupplyParameterFromQuery(Name = "wanted")]
+    public bool Wanted { get; set; }
+    private bool isBusy;
     private bool isReady;
+
+    /// <summary>
+    /// Switches between owned and wanted albums and loads the selected list.
+    /// </summary>
+    private async Task SwitchCollectionAsync()
+    {
+        if (isBusy) return;
+        isBusy = true;
+        Wanted = !Wanted;
+        collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser!.UserId, wanted: Wanted);
+        isBusy = false;
+    }
     private bool isEditing;
     private bool isSearching;
     private MediaFormat? selectedFormat;
@@ -194,7 +207,9 @@
     private MusicAlbum? searchedAlbum;
     private List<MusicCollectionItem> collection = [];
 
-    // Loads the collection after the first render, when browser session storage is available.
+    /// <summary>
+    /// Loads the collection after the first render, when browser session storage is available.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
@@ -211,12 +226,14 @@
             return;
         }
 
-        collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId);
+        collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId, wanted: Wanted);
         isReady = true;
         StateHasChanged();
     }
 
-    // Searches for one album and updates the search result and loading state.
+    /// <summary>
+    /// Searches for one album and updates the search result and loading state.
+    /// </summary>
     private async Task SearchAlbumAsync()
     {
         var query = albumSearchQuery.Trim();
@@ -234,7 +251,9 @@
         isSearching = false;
     }
 
-    // Runs the search when the user presses Enter.
+    /// <summary>
+    /// Runs the search when the user presses Enter.
+    /// </summary>
     private async Task OnSearchKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
@@ -243,40 +262,48 @@
         }
     }
 
-    // Adds the search result in the selected format, then reloads the collection.
+    /// <summary>
+    /// Adds the search result to the active owned or wanted list, then reloads that list.
+    /// </summary>
     private async Task AddSearchedAlbumAsync()
     {
-        if (searchedAlbum is null || AuthSession.CurrentUser?.UserId is not > 0)
+        if (isBusy || searchedAlbum is null || AuthSession.CurrentUser?.UserId is not > 0)
         {
             return;
         }
 
+        isBusy = true;
         var albumTitle = searchedAlbum.Title;
-        var ok = await AuthSession.AddToCollectionAsync(AuthSession.CurrentUser.UserId, searchedAlbum.Id, format: selectedFormat);
+        var ok = await AuthSession.AddToCollectionAsync(AuthSession.CurrentUser.UserId, searchedAlbum.Id, format: selectedFormat, wanted: Wanted);
         if (ok)
         {
-            collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId);
+            collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId, wanted: Wanted);
             searchedAlbum = null;
             albumSearchQuery = string.Empty;
             albumSearchAttempted = false;
             ToastService.Show($"\"{albumTitle}\" added to collection.");
         }
+        isBusy = false;
     }
 
-    // Deletes the owned entry and removes it from the displayed collection after success.
+    /// <summary>
+    /// Deletes the selected entry and removes it from the displayed collection after success.
+    /// </summary>
     private async Task RemoveItemAsync(MusicCollectionItem item)
     {
-        if (AuthSession.CurrentUser?.UserId is not > 0)
+        if (isBusy || AuthSession.CurrentUser?.UserId is not > 0)
         {
             return;
         }
 
+        isBusy = true;
         var ok = await AuthSession.RemoveFromCollectionAsync(AuthSession.CurrentUser.UserId, item.Id);
         if (ok)
         {
             collection.Remove(item);
             ToastService.Show($"\"{item.AlbumTitle}\" removed from collection.");
         }
+        isBusy = false;
     }
 
 }
