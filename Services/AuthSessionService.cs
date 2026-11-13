@@ -2,6 +2,7 @@
 using System.Text.Json;
 using Microsoft.JSInterop;
 using MusicRUs.Models;
+using System.Net;
 
 namespace MusicRUs.Services;
 
@@ -97,13 +98,13 @@ public sealed class AuthSessionService
 
 		if (apiClient.CanUseBackend)
 		{
-			var session = await TryLoginUserAsync(request, cancellationToken);
-			if (session is null)
+			var result = await TryLoginUserAsync(request, cancellationToken);
+			if (!result.IsSuccess || result.User is null)
 			{
-				return AuthResult.Failure("Login failed. Check your credentials and try again.");
+				return result; // An error, or a 2FA code is required
 			}
 
-			return await CompleteLoginAsync(session, cancellationToken);
+			return await CompleteLoginAsync(result.User, cancellationToken);
 		}
 
 		await SignInAsync(request.Username);
@@ -164,6 +165,25 @@ public sealed class AuthSessionService
 		}
 
 		return await CompleteLoginAsync(result.User, cancellationToken);
+	}
+
+	/// <summary>
+	/// Second step of login when 2FA is enabled: sends the code and completes the login.
+	/// </summary>
+	public async Task<AuthResult> VerifyTwoFactorAsync(string twoFactorToken, string code, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			using var response = await httpClient.PostAsJsonAsync("api/2fa/verify", new { twoFactorToken, code = code.Trim() }, cancellationToken);
+			var result = await ReadLoginResponseAsync(response, "user", cancellationToken);
+			return result.IsSuccess && result.User is not null
+				? await CompleteLoginAsync(result.User, cancellationToken)
+				: result;
+		}
+		catch
+		{
+			return AuthResult.Failure("Could not reach the login service. Please try again in a moment.");
+		}
 	}
 
 	/// <summary>
@@ -368,34 +388,55 @@ public sealed class AuthSessionService
 	}
 
 	/// <summary>
-	/// Chooses email or username login and maps a successful response into a session.
+	/// Sends username or e-mail login. The API expects "email" for e-mail login and "username" otherwise.
 	/// </summary>
-	private async Task<UserSession?> TryLoginUserAsync(LoginRequest request, CancellationToken cancellationToken)
+	private async Task<AuthResult> TryLoginUserAsync(LoginRequest request, CancellationToken cancellationToken)
 	{
 		try
 		{
-			var loginRoute = request.Username.Contains('@', StringComparison.Ordinal)
-				? "api/User/login/email"
-				: "api/User/login/username";
-			using var response = await httpClient.PostAsJsonAsync(loginRoute, request, cancellationToken);
-			if (!response.IsSuccessStatusCode)
-			{
-				return null;
-			}
+			var isEmail = request.Username.Contains('@', StringComparison.Ordinal);
+			var loginRoute = isEmail ? "api/User/login/email" : "api/User/login/username";
+			object body = isEmail
+				? new { email = request.Username, password = request.Password }
+				: new { username = request.Username, password = request.Password };
 
-			var content = await response.Content.ReadAsStringAsync(cancellationToken);
-			if (string.IsNullOrWhiteSpace(content))
-			{
-				return UserSession.Create(request.Username);
-			}
-
-			using var document = JsonDocument.Parse(content);
-			return CreateSessionFromLoginJson(document.RootElement, request.Username);
+			using var response = await httpClient.PostAsJsonAsync(loginRoute, body, cancellationToken);
+			return await ReadLoginResponseAsync(response, request.Username, cancellationToken);
 		}
 		catch
 		{
-			return null;
+			return AuthResult.Failure("Could not reach the login service. Please try again in a moment.");
 		}
+	}
+
+	/// <summary>
+	/// Reads a login, Google or 2FA response: 200 = logged in, 202 = code needed, otherwise the server's error.
+	/// </summary>
+	private static async Task<AuthResult> ReadLoginResponseAsync(HttpResponseMessage response, string fallbackUsername, CancellationToken cancellationToken)
+	{
+		if (response.StatusCode == HttpStatusCode.Accepted)
+		{
+			using var challenge = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+			var token = JsonElementReader.GetString(challenge.RootElement, "twoFactorToken");
+			return token is null
+				? AuthResult.Failure("Login failed. Please try again.")
+				: AuthResult.TwoFactorRequired(token);
+		}
+
+		if (response.IsSuccessStatusCode)
+		{
+			using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+			return AuthResult.Success(CreateSessionFromLoginJson(document.RootElement, fallbackUsername));
+		}
+
+		if (response.StatusCode == HttpStatusCode.TooManyRequests)
+		{
+			return AuthResult.Failure("Too many attempts. Wait a minute and try again.");
+		}
+
+		// 401, 409 and 423 come with a message from the API (e.g. "Account temporarily locked ...")
+		return AuthResult.Failure(await ReadServerMessageAsync(response, cancellationToken)
+			?? $"Login failed (HTTP {(int)response.StatusCode}).");
 	}
 
 	/// <summary>
@@ -443,26 +484,7 @@ public sealed class AuthSessionService
 		try
 		{
 			using var response = await httpClient.PostAsJsonAsync("api/google-auth/login", new GoogleLoginRequest { IdToken = idToken }, cancellationToken);
-			if (response.IsSuccessStatusCode)
-			{
-				var content = await response.Content.ReadAsStringAsync(cancellationToken);
-				if (string.IsNullOrWhiteSpace(content))
-				{
-					return AuthResult.Failure("Google login succeeded, but no user was returned.");
-				}
-
-				using var document = JsonDocument.Parse(content);
-				var session = CreateSessionFromLoginJson(document.RootElement, "google-user");
-				return AuthResult.Success(session);
-			}
-
-			return (int)response.StatusCode switch
-			{
-				401 => AuthResult.Failure("Invalid Google token."),
-				404 => AuthResult.Failure("Google login is unavailable right now."),
-				409 => AuthResult.Failure(await ReadServerMessageAsync(response, cancellationToken) ?? "Google login could not link this account."),
-				_ => AuthResult.Failure(await ReadServerMessageAsync(response, cancellationToken) ?? "Google login failed.")
-			};
+			return await ReadLoginResponseAsync(response, "google-user", cancellationToken);
 		}
 		catch
 		{
@@ -566,15 +588,14 @@ public sealed class AuthSessionService
 	}
 }
 
-public sealed record AuthResult(bool IsSuccess, UserSession? User, string? ErrorMessage)
+public sealed record AuthResult(bool IsSuccess, UserSession? User, string? ErrorMessage, string? TwoFactorToken = null)
 {
-	/// <summary>
-	/// Creates a successful authentication result containing the signed-in user.
-	/// </summary>
+	public bool RequiresTwoFactor => TwoFactorToken is not null;
+
 	public static AuthResult Success(UserSession user) => new(true, user, null);
 
-	/// <summary>
-	/// Creates a failed authentication result containing an error message.
-	/// </summary>
 	public static AuthResult Failure(string errorMessage) => new(false, null, errorMessage);
+
+	// Correct password, but the user has 2FA enabled and must enter a code
+	public static AuthResult TwoFactorRequired(string twoFactorToken) => new(false, null, null, twoFactorToken);
 }
