@@ -634,7 +634,7 @@
 			_ => false
 		};
 		if (!hasSelection)
-		{
+		{	
 			ComposerError = $"Select a {Draft.MusicType.ToString().ToLowerInvariant()} from the available results, or choose No music.";
 			return;
 		}
@@ -650,24 +650,28 @@
 		}
 		catch (HttpRequestException)
 		{
-			ComposerError = "Could not reach the API. Your draft has been kept. Please try again.";
+			ComposerError = "Could not reach the API. Please try again.";
 			return;
 		}
 		catch (OperationCanceledException)
 		{
-			ComposerError = "The save request timed out. Check the feed before trying again. Your draft has been kept.";
+			ComposerError = "The save request timed out. Check the feed before trying again.";
 			return;
 		}
 		Draft.Title = string.Empty;
 		Draft.Body = string.Empty;
 		Draft.TagsText = string.Empty;
 		Draft.GenreIds = [];
+
 		tagSearch = string.Empty;
 		selectedTags = [];
+
 		Draft.RequiresMusicSelection = true;
 		Draft.MusicType = MusicRUs.Models.MusicLinkType.Album;
+
 		ResetTracks();
 		Draft.Selection = new MusicRUs.Models.MusicSelection();
+		
 		await LoadFeedAsync();
 		IsComposerOpen = false;
 

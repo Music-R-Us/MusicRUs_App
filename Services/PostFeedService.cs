@@ -400,33 +400,13 @@ public sealed class PostFeedService
 		};
 		BackendApiClient.AddAuthorizationHeader(request, accessToken);
 		using var response = await httpClient.SendAsync(request, cancellationToken);
-		var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
 		if (!response.IsSuccessStatusCode)
 		{
-			Console.Error.WriteLine($"POST api/ForumPost failed (HTTP {(int)response.StatusCode}): {content}");
-			var message = $"Could not save the post (HTTP {(int)response.StatusCode}). Your draft has been kept.";
-			try
-			{
-				using var error = JsonDocument.Parse(content);
-				var detail = JsonElementReader.GetString(error.RootElement, "error", "detail", "message", "title");
-				if (!string.IsNullOrWhiteSpace(detail)) message += $" {detail}";
-				if (JsonElementReader.TryGetProperty(error.RootElement, "errors", out var errors)
-					&& errors.ValueKind == JsonValueKind.Object)
-				{
-					foreach (var field in errors.EnumerateObject())
-					{
-						if (field.Value.ValueKind != JsonValueKind.Array) continue;
-						foreach (var validationError in field.Value.EnumerateArray())
-						{
-							if (validationError.ValueKind == JsonValueKind.String)
-								message += $" {field.Name}: {validationError.GetString()}";
-						}
-					}
-				}
-			}
-			catch (JsonException) { }
-			throw new InvalidOperationException(message);
+			throw new InvalidOperationException($"Could not save the post (HTTP {(int)response.StatusCode}). Your draft has been kept.");
 		}
+
+		var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
 		if (!string.IsNullOrWhiteSpace(content))
 		{
