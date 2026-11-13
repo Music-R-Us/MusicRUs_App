@@ -13,7 +13,9 @@ public static class CountryCodes
         .OrderBy(country => country.Name)
         .ToArray();
 
-    // Accept exact country names and codes; never guess a country from a city name.
+    /// <summary>
+    /// Accept exact country names and codes; never guess a country from a city name.
+    /// </summary>
     public static string? FromLocation(string? location)
     {
         if (string.IsNullOrWhiteSpace(location)) return null;

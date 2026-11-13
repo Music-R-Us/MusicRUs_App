@@ -168,14 +168,18 @@
 	private string formMessage = string.Empty;
 	private DotNetObjectReference<LoginPick>? dotNetReference;
 
-	// Set when login answers 202 (2FA enabled). The code form is shown while this is not null
+	/// <summary>
+	/// Set when login answers 202 (2FA enabled). The code form is shown while this is not null
+	/// </summary>
 	private string? twoFactorToken;
 	private string twoFactorCode = string.Empty;
 
 	private readonly LoginModel loginModel = new();
 	private readonly SignupModel signupModel = new();
 
-	// Renders the Google sign-in button when the login or signup mode changes.
+	/// <summary>
+	/// Renders the Google sign-in button when the login or signup mode changes.
+	/// </summary>
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		if (renderedGoogleMode == currentMode)
@@ -193,6 +197,9 @@
 			: "signup_with");
 	}
 
+	/// <summary>
+	/// Hides the password fields when switching between login and signup.
+	/// </summary>
 	private void ResetPasswordVisibility()
 	{
 		showLoginPassword = false;
@@ -200,7 +207,9 @@
 		showConfirmPassword = false;
 	}
 
-	// Switches to the login form and clears the previous message.
+	/// <summary>
+	/// Switches to the login form and clears the previous message.
+	/// </summary>
 	private void ShowLogin()
 	{
 		CancelTwoFactor();
@@ -208,7 +217,9 @@
 		ResetPasswordVisibility();
 	}
 
-	// Switches to the signup form and clears the previous message.
+	/// <summary>
+	/// Switches to the signup form and clears the previous message.
+	/// </summary>
 	private void ShowSignup()
 	{
 		CancelTwoFactor();
@@ -216,15 +227,18 @@
 		ResetPasswordVisibility();
 	}
 
-	// Leaves the 2FA step and goes back to the normal form
+	/// <summary>
+	/// Leaves the 2FA step and goes back to the normal form
+	/// </summary>
 	private void CancelTwoFactor()
 	{
 		twoFactorToken = null;
 		twoFactorCode = string.Empty;
 		formMessage = string.Empty;
 	}
-
-	// Signs in with the entered credentials and redirects or shows the returned error.
+	/// <summary>
+	/// Signs in with the entered credentials and redirects or shows the returned error.
+	/// </summary>
 	private async Task HandleLoginSubmit()
 	{
 		isSubmitting = true;
@@ -250,7 +264,9 @@
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
 
-	// Creates an account from the form and redirects or shows the returned error.
+	/// <summary>
+	/// Creates an account from the form and redirects or shows the returned error.
+	/// </summary>
 	private async Task HandleSignupSubmit()
 	{
 		isSubmitting = true;
@@ -275,8 +291,10 @@
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
 
+	/// <summary>
+	/// Receives Google's token from JavaScript and completes login or displays an error.
+	/// </summary>
 	[JSInvokable]
-	// Receives Google's token from JavaScript and completes login or displays an error.
 	public async Task OnGoogleToken(string idToken)
 	{
 		isSubmitting = true;
@@ -304,8 +322,11 @@
 
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
+	/// <summary>
+	/// Second step of login: sends the 2FA code and redirects when it is accepted
+	/// </summary>
 
-	// Second step of login: sends the 2FA code and redirects when it is accepted
+	
 	private async Task HandleTwoFactorSubmit()
 	{
 		if (twoFactorToken is null)
@@ -331,8 +352,9 @@
 
 		Navigation.NavigateTo(await GetPostLoginUrlAsync(result.User));
 	}
-
-	// Sends users to their profile or setup depending on whether their profile is configured.
+	/// <summary>
+	/// Sends users to their profile or setup depending on whether their profile is configured.
+	/// </summary>
 	private async Task<string> GetPostLoginUrlAsync(UserSession user)
 	{
 		if (await AuthSession.IsForumProfileSetupCompleteAsync(user))
@@ -343,7 +365,9 @@
 		return GetProfileSetupUrl(user);
 	}
 
-	// Builds the setup route, including the user's ID when available.
+	/// <summary>
+	/// Builds the setup route, including the user's ID when available.
+	/// </summary>
 	private static string GetProfileSetupUrl(UserSession user)
 	{
 		return user.UserId > 0
@@ -351,7 +375,9 @@
 			: "/profile/setup";
 	}
 
-	// Releases the .NET object reference used by Google's JavaScript callback.
+	/// <summary>
+	/// Releases the .NET object reference used by Google's JavaScript callback.
+	/// </summary>
 	public void Dispose()
 	{
 		dotNetReference?.Dispose();

@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.JSInterop;
 using MusicRUs.Models;
@@ -302,34 +302,37 @@ public sealed class AuthSessionService
 	/// <summary>
 	/// Saves the collection additions and removals made in the editor.
 	/// </summary>
+	/// <param name="wanted">True selects the wanted list; false selects the owned list.</param>
 	public async Task<bool> SaveCollectionChangesAsync(int userId, IReadOnlyCollection<MusicCollectionItem> original,
-		IReadOnlyCollection<MusicAlbum> desired, IReadOnlyDictionary<int, MediaFormat> formats, CancellationToken cancellationToken = default)
+		IReadOnlyCollection<MusicAlbum> desired, IReadOnlyDictionary<int, MediaFormat> formats, CancellationToken cancellationToken = default, bool wanted = false)
 	{
 		await InitializeAsync();
-		return await musicCatalog.SaveCollectionChangesAsync(userId, original, desired, formats, CurrentUser, cancellationToken);
+		return await musicCatalog.SaveCollectionChangesAsync(userId, original, desired, formats, CurrentUser, cancellationToken, wanted);
 	}
 
 	/// <summary>
-	/// Loads the user's owned music collection using the current session.
+	/// Loads the user's selected owned or wanted collection using the current session.
 	/// </summary>
-	public async Task<List<MusicCollectionItem>> GetCollectionAsync(int userId, CancellationToken cancellationToken = default)
+	/// <param name="wanted">True selects the wanted list; false selects the owned list.</param>
+	public async Task<List<MusicCollectionItem>> GetCollectionAsync(int userId, CancellationToken cancellationToken = default, bool wanted = false)
 	{
 		await InitializeAsync();
-		return await musicCatalog.GetCollectionAsync(userId, CurrentUser, cancellationToken);
+		return await musicCatalog.GetCollectionAsync(userId, CurrentUser, cancellationToken, wanted);
 	}
 
 	/// <summary>
-	/// Restores the session, then asks the catalog service to save an owned album for the user.
+	/// Restores the session, then asks the catalog service to save an album to the selected list.
 	/// Returns true when saved; CollectionError contains details when the catalog rejects the request.
 	/// </summary>
-	public async Task<bool> AddToCollectionAsync(int userId, int albumId, CancellationToken cancellationToken = default, MediaFormat? format = null)
+	/// <param name="wanted">True selects the wanted list; false selects the owned list.</param>
+	public async Task<bool> AddToCollectionAsync(int userId, int albumId, CancellationToken cancellationToken = default, MediaFormat? format = null, bool wanted = false)
 	{
 		await InitializeAsync();
-		return await musicCatalog.AddToCollectionAsync(userId, albumId, CurrentUser, cancellationToken, format);
+		return await musicCatalog.AddToCollectionAsync(userId, albumId, CurrentUser, cancellationToken, format, wanted);
 	}
 
 	/// <summary>
-	/// Removes an owned collection entry for the user.
+	/// Removes an owned or wanted collection entry for the user.
 	/// </summary>
 	public async Task<bool> RemoveFromCollectionAsync(int userId, int collectionId, CancellationToken cancellationToken = default)
 	{

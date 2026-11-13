@@ -63,6 +63,34 @@ else
 
         </div>
 
+        @if (AuthSession.IsAuthenticated)
+        {
+            <div class="grid gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50">
+                <button type="button" disabled="@collectionBusy" aria-pressed="@showWanted" @onclick="() => showWanted = !showWanted" class="w-fit rounded-full border border-granite-700 px-4 py-2">@(showWanted ? "Wanted / Switch to Owned" : "Owned / Switch to Wanted")</button>
+                @if (!showWanted)
+                {
+                    <label>Media format
+                        <select @bind="collectionFormat" disabled="@collectionBusy" class="rounded-xl bg-coffee-bean-950 px-3 py-2">
+                            <option value="">Choose format</option>
+                            @foreach (var format in Enum.GetValues<MediaFormat>())
+                            {
+                                <option value="@format">@(format == MediaFormat.Cd ? "CD" : format.ToString())</option>
+                            }
+                        </select>
+                    </label>
+                }
+                <button type="button" disabled="@(collectionBusy || (!showWanted && collectionFormat is null))" @onclick="AddAlbumAsync" class="w-fit rounded-full bg-fiery-terracotta-500 px-4 py-2">@(collectionBusy ? "Adding..." : $"Add to {(showWanted ? "wanted" : "owned")}")</button>
+                @if (!string.IsNullOrWhiteSpace(collectionMessage))
+                {
+                    <p role="status">@collectionMessage</p>
+                }
+            </div>
+        }
+        else
+        {
+            <a href="/loginpick" class="text-pine-teal-300">Sign in to add this album to owned or wanted.</a>
+        }
+
         <div class="overflow-hidden rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60">
             <h2 class="border-b border-granite-800/60 p-5 text-xl font-semibold text-porcelain-50">Tracks</h2>
             @if (tracks.Count == 0)
@@ -119,12 +147,47 @@ else
     private bool showDiscNumbers;
     private string errorMessage = string.Empty;
     private int loadVersion;
+    private bool showWanted;
+    private bool collectionBusy;
+    private MediaFormat? collectionFormat;
+    private string collectionMessage = string.Empty;
 
-    // Reloads details when navigating between albums and ignores outdated responses.
+    /// <summary>
+    /// Adds this album to the selected owned or wanted list after checking for duplicates.
+    /// </summary>
+    private async Task AddAlbumAsync()
+    {
+        if (collectionBusy || album is null || AuthSession.CurrentUser is null) return;
+        collectionBusy = true;
+        var version = loadVersion;
+        var wanted = showWanted;
+        var userId = AuthSession.CurrentUser.UserId;
+        var albumId = album.Id;
+        var existing = await AuthSession.GetCollectionAsync(userId, wanted: wanted);
+        if (AuthSession.CollectionError is not null)
+            collectionMessage = AuthSession.CollectionError;
+        else if (existing.Any(item => item.AlbumId == albumId))
+            collectionMessage = $"Already in your {(wanted ? "wanted" : "owned")} list.";
+        else
+        {
+            var saved = await AuthSession.AddToCollectionAsync(userId, albumId, format: collectionFormat, wanted: wanted);
+            collectionMessage = saved ? $"Added to your {(wanted ? "wanted" : "owned")} list." : AuthSession.CollectionError ?? "Could not add this album.";
+        }
+        if (version != loadVersion) collectionMessage = string.Empty;
+        collectionBusy = false;
+    }
+
+    /// <summary>
+
+    /// Reloads details when navigating between albums and ignores outdated responses.
+
+    /// </summary>
     protected override async Task OnParametersSetAsync()
     {
         var version = ++loadVersion;
         var requestedId = AlbumId;
+        collectionMessage = string.Empty;
+        collectionFormat = null;
         isLoading = true;
         album = null;
         tracks = [];

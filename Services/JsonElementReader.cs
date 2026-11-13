@@ -4,7 +4,9 @@ namespace MusicRUs.Services;
 
 internal static class JsonElementReader
 {
-	// Returns the first string found under one of the supplied JSON property names.
+	/// <summary>
+	/// Returns the first string found under one of the supplied JSON property names.
+	/// </summary>
 	public static string? GetString(JsonElement element, params string[] propertyNames)
 	{
 		if (element.ValueKind != JsonValueKind.Object)
@@ -23,7 +25,9 @@ internal static class JsonElementReader
 		return null;
 	}
 
-	// Accepts integer values encoded as either JSON numbers or strings.
+	/// <summary>
+	/// Accepts integer values encoded as either JSON numbers or strings.
+	/// </summary>
 	public static int? GetInt(JsonElement element, params string[] propertyNames)
 	{
 		if (element.ValueKind != JsonValueKind.Object)
@@ -52,7 +56,9 @@ internal static class JsonElementReader
 		return null;
 	}
 
-	// Tries an exact property match before accepting different capitalization.
+	/// <summary>
+	/// Tries an exact property match before accepting different capitalization.
+	/// </summary>
 	public static bool TryGetProperty(JsonElement element, string propertyName, out JsonElement value)
 	{
 		if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(propertyName, out value))

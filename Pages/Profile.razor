@@ -1,4 +1,4 @@
-﻿@page "/{username}"
+@page "/{username}"
 @page "/profile/{UserId:int}"
 
 @layout MainLayout
@@ -10,9 +10,9 @@
 <PageTitle>@(CurrentProfile?.DisplayName ?? DisplayUsername) Profile</PageTitle>
 
 <section class="w-full">
-	@if (!string.IsNullOrWhiteSpace(AuthSession.CollectionError))
+	@if (!string.IsNullOrWhiteSpace(collectionError))
 	{
-		<p role="alert" class="p-3 text-sm text-fiery-terracotta-300">@AuthSession.CollectionError</p>
+		<p role="alert" class="p-3 text-sm text-fiery-terracotta-300">@collectionError</p>
 	}
 	<div class="grid gap-6 rounded-4xl border border-granite-800/80 bg-linear-to-br from-(--profile-start) to-(--profile-end) p-8 shadow-xl backdrop-blur" style="@ProfileBackgroundStyle">
 		<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -126,16 +126,19 @@
 
 					</div>
 					<div class="grid content-start gap-4 self-start rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80 sm:col-span-2">
-						@if (Collection.Count > 0)
+						<button type="button" aria-pressed="@showWanted" @onclick="() => showWanted = !showWanted" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50">
+                            @(showWanted ? "Wanted / Switch to Owned" : "Owned / Switch to Wanted")
+                        </button>
+                        @if (Collection.Count > 0)
 						{
 							<div class="grid gap-3">
 								<div class="flex items-center justify-between">
-									<p class="text-xl font-semibold text-porcelain-50">Music collection</p>
+									<p class="text-xl font-semibold text-porcelain-50">@(showWanted ? "Wanted albums" : "Owned albums")</p>
 
 								</div>
 								@if (CanEditProfile)
 								{
-									<a href="/collection" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
+									<a href="@(showWanted ? "/collection?wanted=true" : "/collection")" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
 								}
 								<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 									@foreach (var item in Collection.Take(5))
@@ -143,7 +146,7 @@
 										<div class="flex items-center gap-3 rounded-xl bg-fiery-terracotta-950/70 px-4 py-3">
 											@if (!string.IsNullOrWhiteSpace(item.ImageUrl))
 											{
-												<a href="/music/album/@item.Album?.Id">
+												<a href="/music/album/@(item.Album?.Id ?? item.AlbumId)">
 													<img src="@item.ImageUrl" alt="@item.AlbumTitle" class="h-12 w-12 rounded-lg object-cover" />
 												</a>
 											}	
@@ -152,7 +155,7 @@
 												<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-granite-800 text-xs text-porcelain-50/80">♪</div>
 											}
 											<div class="min-w-0">
-												<a href="/music/album/@item.Album?.Id" class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</a>
+												<a href="/music/album/@(item.Album?.Id ?? item.AlbumId)" class="truncate font-semibold text-porcelain-50">@item.AlbumTitle</a>
 												@if (!string.IsNullOrWhiteSpace(item.ArtistNames))
 												{
 													<p class="truncate text-sm text-porcelain-50/60">@item.ArtistNames</p>
@@ -165,7 +168,7 @@
 								{
 									@if (CanEditProfile)
 									{
-										<a href="/collection" class="flex items-center gap-2 rounded-xl border border-granite-700/60 bg-granite-900/40 px-4 py-3 text-sm text-porcelain-50/60 transition hover:bg-granite-900/70 hover:text-porcelain-50">
+										<a href="@(showWanted ? "/collection?wanted=true" : "/collection")" class="flex items-center gap-2 rounded-xl border border-granite-700/60 bg-granite-900/40 px-4 py-3 text-sm text-porcelain-50/60 transition hover:bg-granite-900/70 hover:text-porcelain-50">
 											<span>and @(Collection.Count - 5) more...</span>
 											<span class="ml-auto text-pine-teal-300">See full collection →</span>
 										</a>
@@ -179,12 +182,12 @@
 						}
 						else
 						{
-							<p class="text-xl font-semibold text-porcelain-50">No music collection yet.</p>
+							<p class="text-xl font-semibold text-porcelain-50">No @(showWanted ? "wanted" : "owned") albums yet.</p>
 
 							@if (CanEditProfile)
 							{
 								<div class="flex items-end justify-between gap-3 ">
-									<a href="/collection" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
+									<a href="@(showWanted ? "/collection?wanted=true" : "/collection")" class="text-sm font-medium text-pine-teal-300 transition hover:text-pine-teal-200">Manage →</a>
 
 								</div>
 							}
@@ -214,11 +217,19 @@
 
 	[Parameter]
 	public int UserId { get; set; }
-	private List<MusicCollectionItem> Collection = [];
+	private List<MusicCollectionItem> ownedCollection = [];
+	private List<MusicCollectionItem> wantedCollection = [];
+	private bool showWanted;
+	private string? collectionError;
+	private List<MusicCollectionItem> Collection => showWanted ? wantedCollection : ownedCollection;
 
 	private ForumProfile? CurrentProfile;
 
-	// Clears old route identifiers before applying new profile route parameters.
+	/// <summary>
+
+	/// Clears old route identifiers before applying new profile route parameters.
+
+	/// </summary>
 	public override Task SetParametersAsync(ParameterView parameters)
 	{
 		// The router can reuse this component when switching between its routes.
@@ -227,7 +238,11 @@
 		return base.SetParametersAsync(parameters);
 	}
 
-	// Accepts only six-digit hex colors before using them in profile styles.
+	/// <summary>
+
+	/// Accepts only six-digit hex colors before using them in profile styles.
+
+	/// </summary>
 	private static string SafeColor(string? value, string fallback)
 	{
 		return value is { Length: 7 }
@@ -239,17 +254,26 @@
 		$"--profile-start: {SafeColor(CurrentProfile?.PrimaryColor, "#2E0B05")}; " +
 		$"--profile-end: {SafeColor(CurrentProfile?.AccentColor, "#B82A14")};";
 
-	// Resolves the profile from either route identifier, then loads that user's collection.
+	/// <summary>
+
+	/// Resolves the profile from either route identifier, then loads its owned and wanted albums.
+
+	/// </summary>
 	protected override async Task OnParametersSetAsync()
 	{
 		await AuthSession.InitializeAsync();
-		Collection = [];
+		ownedCollection = [];
+		wantedCollection = [];
+		collectionError = null;
 		CurrentProfile = UserId > 0
 			? await AuthSession.GetForumProfileAsync(UserId)
 			: await AuthSession.GetProfileAsync(Username);
 		if (CurrentProfile?.UserId > 0)
 		{
-			Collection = await AuthSession.GetCollectionAsync(CurrentProfile.UserId);
+			ownedCollection = await AuthSession.GetCollectionAsync(CurrentProfile.UserId);
+			collectionError = AuthSession.CollectionError;
+			wantedCollection = await AuthSession.GetCollectionAsync(CurrentProfile.UserId, wanted: true);
+			collectionError ??= AuthSession.CollectionError;
 		}
 	}
 
@@ -280,7 +304,11 @@
 		}
 	}
 
-	// Signs out, displays confirmation, and opens the login page.
+	/// <summary>
+
+	/// Signs out, displays confirmation, and opens the login page.
+
+	/// </summary>
 	private async Task SignOutAsync()
 	{
 		await AuthSession.SignOutAsync();
@@ -290,7 +318,11 @@
 		Navigation.NavigateTo("/loginpick");
 	}
 
-	// Uses the loaded username, route username, or a user-ID fallback.
+	/// <summary>
+
+	/// Uses the loaded username, route username, or a user-ID fallback.
+
+	/// </summary>
 	private string GetProfileUsernameFallback()
 	{
 		if (!string.IsNullOrWhiteSpace(CurrentProfile?.Username))

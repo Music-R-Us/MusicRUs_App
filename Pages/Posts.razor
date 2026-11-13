@@ -20,7 +20,7 @@
 		</div>
         @if(AuthSession.CurrentUser is not null)
         {
-        <button class="inline-flex items-center justify-center rounded-full bg-pine-teal-400 px-5 py-3 text-sm font-semibold text-coffee-bean-950 transition hover:bg-pine-teal-300"
+        <button class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition"
 			type="button" @onclick="OpenComposer"> + New Post
 		</button>
         }
@@ -330,7 +330,9 @@
 		.Where(MatchesFeedTags)
 		.ToList();
 
-	// Initializes the session, loads genre choices, and populates the feed.
+	/// <summary>
+	/// Initializes the session, loads genre choices, and populates the feed.
+	/// </summary>
 	protected override async Task OnInitializedAsync()
 	{
 		await AuthSession.InitializeAsync();
@@ -338,14 +340,18 @@
 		await LoadFeedAsync();
 	}
 
-	// Refreshes the feed and loads its authors' display details.
+	/// <summary>
+	/// Refreshes the feed and loads its authors' display details.
+	/// </summary>
 	private async Task LoadFeedAsync()
 	{
 		FeedPosts = await PostFeed.GetRecentPostsAsync(AuthSession.CurrentUser);
 		await LoadAuthorProfilesAsync();
 	}
 
-	// Loads profile details for feed authors so cards can show their current names and avatars.
+	/// <summary>
+	/// Loads profile details for feed authors so cards can show their current names and avatars.
+	/// </summary>
 	private async Task LoadAuthorProfilesAsync()
 	{
 		AuthorProfiles = [];
@@ -373,17 +379,23 @@
 		}
 	}
 
-	// Opens the post form and clears its previous error.
+	/// <summary>
+	/// Opens the post form and clears its previous error.
+	/// </summary>
 	private void OpenComposer()
 	{
 		ComposerError = string.Empty;
 		IsComposerOpen = true;
 	}
 
-	// Closes the post form while retaining its draft.
+	/// <summary>
+	/// Closes the post form while retaining its draft.
+	/// </summary>
 	private void CloseComposer() => IsComposerOpen = false;
 
-	// Cancels track loading and clears the selected track and available tracks.
+	/// <summary>
+	/// Cancels track loading and clears the selected track and available tracks.
+	/// </summary>
 	private void ResetTracks()
 	{
 		trackLoad?.Cancel();
@@ -394,7 +406,9 @@
 		Draft.Selection.Track = string.Empty;
 	}
 
-	// Clears music selections and pending searches when the linked music type changes.
+	/// <summary>
+	/// Clears music selections and pending searches when the linked music type changes.
+	/// </summary>
 	private void OnMusicTypeChanged()
 	{
 		CancelArtistSearchDebounce();
@@ -409,32 +423,42 @@
 		ComposerError = string.Empty;
 	}
 
-	// Copies the selected track's title into the draft and clears its error.
+	/// <summary>
+	/// Copies the selected track's title into the draft and clears its error.
+	/// </summary>
 	private void OnTrackSelected()
 	{
 		Draft.Selection.Track = trackResults.FirstOrDefault(track => track.Id == Draft.Selection.TrackId)?.Title ?? string.Empty;
 		ComposerError = string.Empty;
 	}
 
-	// Updates the text used to filter composer genre suggestions.
+	/// <summary>
+	/// Updates the text used to filter composer genre suggestions.
+	/// </summary>
 	private void OnTagsInput(ChangeEventArgs args)
 	{
 		tagSearch = args.Value?.ToString() ?? string.Empty;
 	}
 
-	// Updates the text used to filter posts in the feed.
+	/// <summary>
+	/// Updates the text used to filter posts in the feed.
+	/// </summary>
 	private void OnPostSearchInput(ChangeEventArgs args)
 	{
 		postSearch = args.Value?.ToString() ?? string.Empty;
 	}
 
-	// Updates the text used to filter the feed's genre suggestions.
+	/// <summary>
+	/// Updates the text used to filter the feed's genre suggestions.
+	/// </summary>
 	private void OnFeedTagSearchInput(ChangeEventArgs args)
 	{
 		feedTagSearch = args.Value?.ToString() ?? string.Empty;
 	}
 
-	// Updates artist text, clears dependent selections, and schedules an artist search.
+	/// <summary>
+	/// Updates artist text, clears dependent selections, and schedules an artist search.
+	/// </summary>
 	private async Task OnArtistInputAsync(ChangeEventArgs args)
 	{
 		ResetTracks();
@@ -452,7 +476,9 @@
 		await DebounceArtistSearchAsync();
 	}
 
-	// Updates album text, clears the selected album and track, and schedules a search.
+	/// <summary>
+	/// Updates album text, clears the selected album and track, and schedules a search.
+	/// </summary>
 	private async Task OnAlbumInputAsync(ChangeEventArgs args)
 	{
 		ResetTracks();
@@ -463,7 +489,9 @@
 		await DebounceAlbumSearchAsync();
 	}
 
-	// Selects an artist result and clears album, track, and search state.
+	/// <summary>
+	/// Selects an artist result and clears album, track, and search state.
+	/// </summary>
 	private void SelectArtistAsync(MusicRUs.Models.MusicArtist artist)
 	{
 		CancelArtistSearchDebounce();
@@ -478,7 +506,9 @@
 		ComposerError = string.Empty;
 	}
 
-	// Loads tracks for the chosen album so a track can be linked to the post.
+	/// <summary>
+	/// Loads tracks for the chosen album so a track can be linked to the post.
+	/// </summary>
 	private async Task SelectAlbumAsync(MusicRUs.Models.MusicAlbum album)
 	{
 		CancelAlbumSearchDebounce();
@@ -512,7 +542,9 @@
 		}
 	}
 
-	// Adds a unique genre to the draft and refreshes its saved genre fields.
+	/// <summary>
+	/// Adds a unique genre to the draft and refreshes its saved genre fields.
+	/// </summary>
 	private void AddTag(string tag)
 	{
 		if (!selectedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
@@ -526,7 +558,9 @@
 		SyncDraftTags();
 	}
 
-	// Removes a draft genre and refreshes its saved genre fields.
+	/// <summary>
+	/// Removes a draft genre and refreshes its saved genre fields.
+	/// </summary>
 	private void RemoveTag(string tag)
 	{
 		if (selectedTags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase)) > 0)
@@ -536,7 +570,9 @@
 		SyncDraftTags();
 	}
 
-	// Adds a unique genre filter to the feed and clears the suggestion text.
+	/// <summary>
+	/// Adds a unique genre filter to the feed and clears the suggestion text.
+	/// </summary>
 	private void AddFeedTag(string tag)
 	{
 		if (!selectedFeedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
@@ -549,7 +585,9 @@
 		feedTagSearch = string.Empty;
 	}
 
-	// Removes a genre filter from the feed.
+	/// <summary>
+	/// Removes a genre filter from the feed.
+	/// </summary>
 	private void RemoveFeedTag(string tag)
 	{
 		if (selectedFeedTags.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase)) > 0)
@@ -558,7 +596,9 @@
 		}
 	}
 
-	// Deletes the current user's selected post and reloads the feed after success.
+	/// <summary>
+	/// Deletes the current user's selected post and reloads the feed after success.
+	/// </summary>
 	private async Task DeletePostAsync(MusicRUs.Models.PostItem post)
 	{
 		if (!IsOwnPost(post))
@@ -574,7 +614,9 @@
 		}
 	}
 
-	// Validates the music selection, saves the post, and resets the form only after success.
+	/// <summary>
+	/// Validates the music selection, saves the post, and resets the form only after success.
+	/// </summary>
 	private async Task CreatePostAsync()
 	{
 		if (string.IsNullOrWhiteSpace(AuthSession.CurrentUser?.Username))
@@ -592,7 +634,7 @@
 			_ => false
 		};
 		if (!hasSelection)
-		{
+		{	
 			ComposerError = $"Select a {Draft.MusicType.ToString().ToLowerInvariant()} from the available results, or choose No music.";
 			return;
 		}
@@ -608,24 +650,28 @@
 		}
 		catch (HttpRequestException)
 		{
-			ComposerError = "Could not reach the API. Your draft has been kept. Please try again.";
+			ComposerError = "Could not reach the API. Please try again.";
 			return;
 		}
 		catch (OperationCanceledException)
 		{
-			ComposerError = "The save request timed out. Check the feed before trying again. Your draft has been kept.";
+			ComposerError = "The save request timed out. Check the feed before trying again.";
 			return;
 		}
 		Draft.Title = string.Empty;
 		Draft.Body = string.Empty;
 		Draft.TagsText = string.Empty;
 		Draft.GenreIds = [];
+
 		tagSearch = string.Empty;
 		selectedTags = [];
+
 		Draft.RequiresMusicSelection = true;
 		Draft.MusicType = MusicRUs.Models.MusicLinkType.Album;
+
 		ResetTracks();
 		Draft.Selection = new MusicRUs.Models.MusicSelection();
+		
 		await LoadFeedAsync();
 		IsComposerOpen = false;
 
@@ -634,7 +680,9 @@
 		Navigation.NavigateTo("/posts", forceLoad: false);
 	}
 
-	// Waits for typing to pause and cancels the previous artist search.
+	/// <summary>
+	/// Waits for typing to pause and cancels the previous artist search.
+	/// </summary>
 	private async Task DebounceArtistSearchAsync()
 	{
 		CancelArtistSearchDebounce();
@@ -673,7 +721,9 @@
 		}
 	}
 
-	// Waits for typing to pause and cancels the previous album search.
+	/// <summary>
+	/// Waits for typing to pause and cancels the previous album search.
+	/// </summary>
 	private async Task DebounceAlbumSearchAsync()
 	{
 		CancelAlbumSearchDebounce();
@@ -715,7 +765,9 @@
 		}
 	}
 
-	// Returns unique genre names from the loaded genre choices.
+	/// <summary>
+	/// Returns unique genre names from the loaded genre choices.
+	/// </summary>
 	private IEnumerable<string> GetGenreSuggestions()
 	{
 		return genreOptions
@@ -723,7 +775,9 @@
 			.Distinct(StringComparer.OrdinalIgnoreCase);
 	}
 
-	// Returns up to eight matching suggestions, excluding blanks and existing selections.
+	/// <summary>
+	/// Returns up to eight matching suggestions, excluding blanks and existing selections.
+	/// </summary>
 	private static IReadOnlyList<string> FilterSuggestions(IEnumerable<string> suggestions, string search, IEnumerable<string>? excluded = null)
 	{
 		var excludedSet = new HashSet<string>(excluded ?? [], StringComparer.OrdinalIgnoreCase);
@@ -736,7 +790,9 @@
 			.ToList();
 	}
 
-	// Copies selected genre names and IDs into the draft submitted to the service.
+	/// <summary>
+	/// Copies selected genre names and IDs into the draft submitted to the service.
+	/// </summary>
 	private void SyncDraftTags()
 	{
 		Draft.TagsText = string.Join(", ", selectedTags.Distinct(StringComparer.OrdinalIgnoreCase));
@@ -747,7 +803,9 @@
 			.ToList();
 	}
 
-	// Matches search text against the post's content, music, tags, or author.
+	/// <summary>
+	/// Matches search text against the post's content, music, tags, or author.
+	/// </summary>
 	private bool MatchesPostSearch(MusicRUs.Models.PostItem post)
 	{
 		var search = postSearch.Trim();
@@ -764,21 +822,27 @@
 			|| ContainsSearch(GetAuthorDisplayName(post), search);
 	}
 
-	// Includes a post when it contains every selected genre filter.
+	/// <summary>
+	/// Includes a post when it contains every selected genre filter.
+	/// </summary>
 	private bool MatchesFeedTags(MusicRUs.Models.PostItem post)
 	{
 		return selectedFeedTags.Count == 0
 			|| selectedFeedTags.All(selectedTag => post.Tags.Any(postTag => string.Equals(postTag, selectedTag, StringComparison.OrdinalIgnoreCase)));
 	}
 
-	// Checks whether nonblank text contains the search term, ignoring capitalization.
+	/// <summary>
+	/// Checks whether nonblank text contains the search term, ignoring capitalization.
+	/// </summary>
 	private static bool ContainsSearch(string? value, string search)
 	{
 		return !string.IsNullOrWhiteSpace(value)
 			&& value.Contains(search, StringComparison.OrdinalIgnoreCase);
 	}
 
-	// Checks whether the post contains an artist, album, or song name.
+	/// <summary>
+	/// Checks whether the post contains an artist, album, or song name.
+	/// </summary>
 	private static bool HasMusicSelection(MusicRUs.Models.PostItem post)
 	{
 		return !string.IsNullOrWhiteSpace(post.Artist)
@@ -786,19 +850,25 @@
 			|| !string.IsNullOrWhiteSpace(post.Song);
 	}
 
-	// Checks whether this post qualifies for the current user's recent-post highlight.
+	/// <summary>
+	/// Checks whether this post qualifies for the current user's recent-post highlight.
+	/// </summary>
 	private bool IsHighlightedOwnPost(MusicRUs.Models.PostItem post)
 	{
 		return MusicRUs.Services.PostFeedService.IsRecentOwnPost(post, AuthSession.CurrentUser);
 	}
 
-	// Checks ownership using the user's ID or matching username.
+	/// <summary>
+	/// Checks ownership using the user's ID or matching username.
+	/// </summary>
 	private bool IsOwnPost(MusicRUs.Models.PostItem post)
 	{
 		return MusicRUs.Services.PostFeedService.IsOwnPost(post, AuthSession.CurrentUser);
 	}
 
-	// Builds post-card styling, highlighting the current user's recent posts.
+	/// <summary>
+	/// Builds post-card styling, highlighting the current user's recent posts.
+	/// </summary>
 	private string GetPostCardClass(MusicRUs.Models.PostItem post)
 	{
 		var highlightClasses = IsHighlightedOwnPost(post)
@@ -808,7 +878,9 @@
 		return $"group rounded-3xl border {highlightClasses} p-5 transition hover:-translate-y-0.5 hover:border-pine-teal-400/40 hover:bg-coffee-bean-900/80";
 	}
 
-	// Uses the author's profile name, username, or user-ID fallback.
+	/// <summary>
+	/// Uses the author's profile name, username, or user-ID fallback.
+	/// </summary>
 	private string GetAuthorDisplayName(MusicRUs.Models.PostItem post)
 	{
 		if (post.UserId > 0 && AuthorProfiles.TryGetValue(post.UserId, out var profile) && !string.IsNullOrWhiteSpace(profile.DisplayName))
@@ -821,7 +893,9 @@
 			: $"User {post.UserId}";
 	}
 
-	// Builds the author's profile link or falls back to the posts page.
+	/// <summary>
+	/// Builds the author's profile link or falls back to the posts page.
+	/// </summary>
 	private string GetAuthorProfileUrl(MusicRUs.Models.PostItem post)
 	{
 		if (post.UserId > 0)
@@ -832,7 +906,9 @@
 		return "/posts";
 	}
 
-	// Cancels pending track loads and catalog searches when leaving the page.
+	/// <summary>
+	/// Cancels pending track loads and catalog searches when leaving the page.
+	/// </summary>
 	public void Dispose()
 	{
 		ResetTracks();
@@ -840,7 +916,9 @@
 		CancelAlbumSearchDebounce();
 	}
 
-	// Cancels the pending artist search and clears its active token reference.
+	/// <summary>
+	/// Cancels the pending artist search and clears its active token reference.
+	/// </summary>
 	private void CancelArtistSearchDebounce()
 	{
 		var debounce = artistSearchDebounce;
@@ -861,7 +939,9 @@
 		debounce.Dispose();
 	}
 
-	// Cancels the pending album search and clears its active token reference.
+	/// <summary>
+	/// Cancels the pending album search and clears its active token reference.
+	/// </summary>
 	private void CancelAlbumSearchDebounce()
 	{
 		var debounce = albumSearchDebounce;

@@ -6,6 +6,7 @@
 @inject MusicRUs.Services.ToastService ToastService
 @inject NavigationManager Navigation
 @inject MusicRUs.Services.ConcertService ConcertApi
+@inject MusicRUs.Services.ArtistSubscriptionService SubscriptionApi
 @using MusicRUs.Services
 
 <PageTitle>@(artist?.Name ?? "Artist") – MusicRUs</PageTitle>
@@ -76,6 +77,17 @@ else
                             class="rounded-xl border border-pine-teal-400/60 bg-granite-900 px-4 py-3 font-semibold text-porcelain-50 transition hover:bg-granite-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-porcelain-50">
                         @(showConcerts ? "Show albums" : "Upcoming concerts")
                     </button>
+                    @if (AuthSession.CurrentUser is { UserId: > 0 })
+                    {
+                        <button type="button" @onclick="ToggleSubscriptionAsync" disabled="@subscriptionBusy"
+                                class="rounded-xl border border-granite-700 bg-granite-900 px-4 py-3 font-semibold text-porcelain-50 hover:bg-granite-800 disabled:opacity-50">
+                            @(subscriptionBusy ? "Please wait…" : isSubscribed ? "Unsubscribe" : "Subscribe to artist")
+                        </button>
+                        @if (subscriptionMessage is not null)
+                        {
+                            <p role="status" class="text-sm text-porcelain-50">@subscriptionMessage</p>
+                        }
+                    }
                 </div>
                 @if (showConcerts)
                 {
@@ -204,8 +216,14 @@ else
     private string concertCountryCode = string.Empty;
     private string concertLocationMessage = string.Empty;
     private string? concertError;
+    private bool isSubscribed;
+    private bool subscriptionBusy;
+    private bool subscriptionStatusLoaded;
+    private string? subscriptionMessage;
 
-    // Loads the routed artist's albums and the signed-in user's collection membership.
+    /// <summary>
+    /// Loads the routed artist's albums and the signed-in user's collection membership.
+    /// </summary>
     protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
@@ -213,6 +231,9 @@ else
         concertsLoaded = false;
         concertsLoading = false;
         concerts = [];
+        isSubscribed = false;
+        subscriptionStatusLoaded = false;
+        subscriptionMessage = null;
         await AuthSession.InitializeAsync();
         artist = null;
         albums = [];
@@ -228,12 +249,60 @@ else
         {
             var collection = await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId);
             SetCollection(collection);
+            var subscriptions = await SubscriptionApi.GetByUserAsync(AuthSession.CurrentUser);
+            subscriptionStatusLoaded = subscriptions is not null;
+            isSubscribed = subscriptions?.Any(subscription => subscription.ArtistId == ArtistId) == true;
+            if (!subscriptionStatusLoaded)
+                subscriptionMessage = "Could not check subscription status. Click to retry.";
         }
 
         isLoading = false;
     }
 
-    // Fetch concerts only when the user first opens this view.
+    /// <summary>
+    /// Subscribes to or unsubscribes from this artist after confirming the current subscription status.
+    /// </summary>
+    private async Task ToggleSubscriptionAsync()
+    {
+        if (subscriptionBusy || AuthSession.CurrentUser is not { UserId: > 0 } user) return;
+        subscriptionBusy = true;
+        subscriptionMessage = null;
+        var requestedArtistId = ArtistId;
+        try
+        {
+            // Recover a failed status check before attempting to create a subscription.
+            if (!subscriptionStatusLoaded)
+            {
+                var existing = await SubscriptionApi.GetByUserAsync(user);
+                if (ArtistId != requestedArtistId) return;
+                if (existing is null)
+                {
+                    subscriptionMessage = "Could not check subscription status. Please try again.";
+                    return;
+                }
+                subscriptionStatusLoaded = true;
+                isSubscribed = existing.Any(subscription => subscription.ArtistId == requestedArtistId);
+                if (isSubscribed) return;
+            }
+            var profile = isSubscribed ? null : await AuthSession.GetForumProfileAsync(user.UserId);
+            var country = CountryCodes.FromLocation(profile?.Location) ?? string.Empty;
+            var success = isSubscribed
+                ? await SubscriptionApi.UnsubscribeAsync(user, requestedArtistId)
+                : await SubscriptionApi.SubscribeAsync(user, requestedArtistId, country);
+            if (ArtistId != requestedArtistId) return;
+            if (success)
+            {
+                isSubscribed = !isSubscribed;
+                subscriptionMessage = isSubscribed ? "Artist subscribed. View their shows on the Concerts page." : "Subscription removed.";
+            }
+            else subscriptionMessage = "Could not save your subscription. Please try again.";
+        }
+        finally { subscriptionBusy = false; }
+    }
+
+    /// <summary>
+    /// Fetch concerts only when the user first opens this view.
+    /// </summary>
     private async Task ToggleConcertsAsync()
     {
         showConcerts = !showConcerts;
@@ -241,6 +310,9 @@ else
             await LoadConcertsAsync();
     }
 
+    /// <summary>
+    /// Loads upcoming concerts for the selected artist, using the selected or profile country when available.
+    /// </summary>
     private async Task LoadConcertsAsync()
     {
         var requestedArtistId = ArtistId;
@@ -280,6 +352,9 @@ else
         }
     }
 
+    /// <summary>
+    /// Formats the concert date in the venue time zone, falling back to the supplied offset.
+    /// </summary>
     private static string FormatConcertDate(Concert concert)
     {
         try
@@ -293,7 +368,9 @@ else
         }
     }
 
-    // Loads and stores an album's tracks while showing its loading indicator.
+    /// <summary>
+    /// Loads and stores an album's tracks while showing its loading indicator.
+    /// </summary>
     private async Task LoadTracksAsync(int albumId)
     {
         loadingTrackAlbumId = albumId;
@@ -302,7 +379,9 @@ else
         loadingTrackAlbumId = 0;
     }
 
-    // Adds the selected album and media format, then refreshes collection membership.
+    /// <summary>
+    /// Adds the selected album and media format, then refreshes collection membership.
+    /// </summary>
     private async Task AddToCollectionAsync(int albumId)
     {
         if (AuthSession.CurrentUser?.UserId is not > 0)
@@ -318,7 +397,9 @@ else
         }
     }
 
-    // Removes the album's owned entry, then refreshes collection membership.
+    /// <summary>
+    /// Removes the album's owned entry, then refreshes collection membership.
+    /// </summary>
     private async Task RemoveFromCollectionAsync(int albumId)
     {
         if (AuthSession.CurrentUser?.UserId is not > 0)
@@ -338,7 +419,9 @@ else
             SetCollection(await AuthSession.GetCollectionAsync(AuthSession.CurrentUser.UserId));
         }
     }
-    // Keeps the collection entries and owned-album lookup in sync.
+    /// <summary>
+    /// Keeps the collection entries and owned-album lookup in sync.
+    /// </summary>
     private void SetCollection(List<MusicCollectionItem> collection)
     {
         collectionAlbumIds = collection.Select(item => item.AlbumId).ToHashSet();
