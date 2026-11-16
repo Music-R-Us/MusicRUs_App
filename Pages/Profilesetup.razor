@@ -916,7 +916,12 @@
 	{
 		var url = value.Trim();
 		if (url.Length == 0) return string.Empty;
-		return $"{url}";
+
+		// The API only accepts http(s) links, so add https:// when the user just writes "example.com"
+		return url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+			|| url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+			? url
+			: $"https://{url}";
 	}
 
 	/// <summary>
