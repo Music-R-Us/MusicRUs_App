@@ -409,7 +409,8 @@
 
 		[Required]
 		[MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
-		[RegularExpression(@"^(?=.*[A-Za-z])(?=.*\d)[\s\S]+$", ErrorMessage = "Password must contain at least one letter and one number.")]
+		[RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_])[A-Za-z\d@$!%*?&#_]{8,}$",
+    		ErrorMessage = "Password must contain an uppercase letter, a lowercase letter, a number and one of @$!%*?&#_")]
 		[DataType(DataType.Password)]
 		public string Password { get; set; } = string.Empty;
 
