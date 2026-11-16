@@ -315,6 +315,8 @@
 							</span>
 						</span>
 					</label>
+					@* Account security: 2FA is set up here and not on the public profile *@
+					<TwoFactorSettings />
 
 					<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
 						<button type="button" @onclick="SkipSetup" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-5 py-3 text-base font-semibold text-porcelain-50/80 transition hover:text-porcelain-50">
@@ -326,8 +328,6 @@
 					</div>
 				</div>
 			</EditForm>
-			@* Account security: 2FA is set up here and not on the public profile *@
-			<TwoFactorSettings />
 		}
 	</div>
 </section>
