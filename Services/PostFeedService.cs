@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using MusicRUs.Models;
@@ -8,6 +7,7 @@ namespace MusicRUs.Services;
 public sealed class PostFeedService
 {
 	private readonly HttpClient httpClient;
+	private readonly BackendApiClient apiClient;
 	private readonly BackendApiOptions backendOptions;
 	private readonly List<PostItem> posts = [];
 	private readonly object gate = new();
@@ -15,9 +15,10 @@ public sealed class PostFeedService
 	/// <summary>
 	/// Stores the HTTP client and settings used for backend and local posts.
 	/// </summary>
-	public PostFeedService(HttpClient httpClient, IOptions<BackendApiOptions> backendApiOptions)
+	public PostFeedService(HttpClient httpClient, IOptions<BackendApiOptions> backendApiOptions, BackendApiClient apiClient)
 	{
 		this.httpClient = httpClient;
+		this.apiClient = apiClient;
 		backendOptions = backendApiOptions.Value;
 	}
 
@@ -159,15 +160,13 @@ public sealed class PostFeedService
 			Body = body.Trim()
 		};
 
-		if (CanUseBackend && post.PostId > 0 && user?.UserId > 0)
+		if (CanUseBackend && post.PostId > 0)
 		{
 			var forumRequest = new CreateForumCommentRequest
 			{
-				PostId = post.PostId,
-				UserId = user.UserId,
 				Content = request.Body
 			};
-			if (!await TryPostToApiAsync("api/Comment", forumRequest, user.AccessToken, cancellationToken))
+			if (!await apiClient.PostAsync($"api/Comment/forumpost/{post.PostId}", forumRequest, user.AccessToken, cancellationToken))
 			{
 				throw new InvalidOperationException("Could not save your comment. Please try again.");
 			}
@@ -188,14 +187,7 @@ public sealed class PostFeedService
 
 		if (CanUseBackend && post.PostId > 0 && user is not null)
 		{
-			var urls = new[]
-			{
-				$"api/ForumPost/{post.PostId}",
-				$"api/ForumPost/deleteForumPost/{post.PostId}",
-				$"api/ForumPost/user/{user.UserId}/post/{post.PostId}"
-			};
-
-			if (await TryDeleteFromAnyApiAsync(urls, user.AccessToken, cancellationToken))
+			if (await apiClient.DeleteAsync($"api/ForumPost/deleteForumPost/{post.PostId}", user.AccessToken, cancellationToken))
 			{
 				RemoveLocalPost(post);
 				return true;
@@ -218,14 +210,7 @@ public sealed class PostFeedService
 
 		if (CanUseBackend && comment.CommentId > 0 && user is not null)
 		{
-			var urls = new[]
-			{
-				$"api/Comment/{comment.CommentId}",
-				$"api/Comment/{post.PostId}/{comment.CommentId}",
-				$"api/Comment/post/{post.PostId}/comment/{comment.CommentId}"
-			};
-
-			if (await TryDeleteFromAnyApiAsync(urls, user.AccessToken, cancellationToken))
+			if (await apiClient.DeleteAsync($"api/Comment/{comment.CommentId}", user.AccessToken, cancellationToken))
 			{
 				RemoveLocalComment(post, comment);
 				return true;
@@ -394,19 +379,12 @@ public sealed class PostFeedService
 	/// </summary>
 	private async Task<PostItem> TryPostForumPostAsync(CreateForumPostRequest requestBody, string author, string accessToken, CancellationToken cancellationToken)
 	{
-		using var request = new HttpRequestMessage(HttpMethod.Post, "api/ForumPost")
-		{
-			Content = JsonContent.Create(requestBody)
-		};
-		BackendApiClient.AddAuthorizationHeader(request, accessToken);
-		using var response = await httpClient.SendAsync(request, cancellationToken);
+		var (content, statusCode) = await apiClient.PostWithStatusAsync("api/ForumPost", requestBody, accessToken, cancellationToken);
 
-		if (!response.IsSuccessStatusCode)
+		if ((int)statusCode is < 200 or >= 300)
 		{
-			throw new InvalidOperationException($"Could not save the post (HTTP {(int)response.StatusCode}). Your draft has been kept.");
+			throw new InvalidOperationException($"Could not save the post (HTTP {(int)statusCode}). Your draft has been kept.");
 		}
-
-		var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
 		if (!string.IsNullOrWhiteSpace(content))
 		{
@@ -463,57 +441,6 @@ public sealed class PostFeedService
 		}
 
 		return null;
-	}
-
-	/// <summary>
-	/// Sends an authenticated JSON POST and returns false if it fails.
-	/// </summary>
-	private async Task<bool> TryPostToApiAsync<TRequest>(string relativeUrl, TRequest body, string accessToken, CancellationToken cancellationToken)
-	{
-		try
-		{
-			using var request = new HttpRequestMessage(HttpMethod.Post, relativeUrl)
-			{
-				Content = JsonContent.Create(body)
-			};
-			BackendApiClient.AddAuthorizationHeader(request, accessToken);
-			using var response = await httpClient.SendAsync(request, cancellationToken);
-			return response.IsSuccessStatusCode;
-		}
-		catch
-		{
-			return false;
-		}
-	}
-
-	/// <summary>
-	/// Tries the supplied DELETE routes until one succeeds.
-	/// </summary>
-	private async Task<bool> TryDeleteFromAnyApiAsync(IEnumerable<string> relativeUrls, string accessToken, CancellationToken cancellationToken)
-	{
-		foreach (var relativeUrl in relativeUrls)
-		{
-			try
-			{
-				using var request = new HttpRequestMessage(HttpMethod.Delete, relativeUrl);
-				BackendApiClient.AddAuthorizationHeader(request, accessToken);
-				using var response = await httpClient.SendAsync(request, cancellationToken);
-				if (response.IsSuccessStatusCode)
-				{
-					return true;
-				}
-				if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
-				{
-					return false;
-				}
-			}
-			catch
-			{
-				continue;
-			}
-		}
-
-		return false;
 	}
 
 	/// <summary>

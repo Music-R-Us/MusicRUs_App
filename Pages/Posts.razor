@@ -134,16 +134,15 @@
 @if (IsComposerOpen)
 {
 	<div class="fixed inset-0 z-40 flex items-center justify-center bg-coffee-bean-950/80 px-4 py-8 backdrop-blur-sm">
-		<div class="max-h-[calc(100vh-4rem)] w-full max-w-4xl overflow-y-auto rounded-4xl border border-granite-800/80 bg-coffee-bean-950 p-6 shadow-2xl shadow-black/30 lg:p-8">
+		<div class="max-h w-full max-w-4xl overflow-y-auto rounded-4xl border border-granite-800/80 bg-coffee-bean-950 p-6 shadow-2xl shadow-black/30 lg:p-8">
 			<div class="flex items-start justify-between gap-4">
 				<div>
-					<p class="text-sm font-semibold uppercase tracking-[0.3em] text-pine-teal-300">Compose</p>
+					<p class="text-xl font-semibold text-pine-teal-300">Compose</p>
 					<h2 class="mt-2 text-3xl font-semibold tracking-tight text-porcelain-50">New Post</h2>
 				</div>
 				<button class="rounded-full border border-granite-700 px-3 py-1 text-sm text-porcelain-50/70 transition hover:bg-granite-900"
 					type="button"
-					@onclick="CloseComposer">
-					Close
+					@onclick="CancelPost"> Close
 				</button>
 			</div>
 
@@ -292,7 +291,7 @@
 				}
 
 				<div class="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-granite-800 bg-coffee-bean-950 pt-5 sm:flex-row sm:items-center sm:justify-end">
-					<button class="rounded-full border border-granite-700 px-5 py-3 text-sm font-medium text-porcelain-50/80 transition hover:bg-granite-900" type="button" @onclick="CloseComposer">Cancel</button>
+					<button class="rounded-full border border-granite-700 px-5 py-3 text-sm font-medium text-porcelain-50/80 transition hover:bg-granite-900" type="button" @onclick="CancelPost">Cancel</button>
 					<button class="rounded-full border-2 border-porcelain-50/80 bg-fiery-terracotta-500 px-6 py-3 text-sm font-bold text-porcelain-50 shadow-lg shadow-black/30 transition hover:border-porcelain-50 hover:bg-fiery-terracotta-400" type="submit">Publish Post</button>
 				</div>
 			</EditForm>
@@ -387,11 +386,6 @@
 		ComposerError = string.Empty;
 		IsComposerOpen = true;
 	}
-
-	/// <summary>
-	/// Closes the post form while retaining its draft.
-	/// </summary>
-	private void CloseComposer() => IsComposerOpen = false;
 
 	/// <summary>
 	/// Cancels track loading and clears the selected track and available tracks.
@@ -549,7 +543,7 @@
 	{
 		if (!selectedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
 		{
-            ToastService.Show("Genre added");
+			ToastService.Show("Genre added");
 
 			selectedTags.Add(tag);
 		}
@@ -577,7 +571,7 @@
 	{
 		if (!selectedFeedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
 		{
-            ToastService.Show("Genre added");
+			ToastService.Show("Genre added");
 
 			selectedFeedTags.Add(tag);
 		}
@@ -608,7 +602,7 @@
 
 		if (await PostFeed.DeletePostAsync(post, AuthSession.CurrentUser))
 		{
-            ToastService.Show("Post deleted successfully!");
+			ToastService.Show("Post deleted successfully!");
 
 			await LoadFeedAsync();
 		}
@@ -671,15 +665,36 @@
 
 		ResetTracks();
 		Draft.Selection = new MusicRUs.Models.MusicSelection();
-		
+
 		await LoadFeedAsync();
 		IsComposerOpen = false;
 
-        ToastService.Show("Post created successfully!");
+		ToastService.Show("Post created successfully!");
 
 		Navigation.NavigateTo("/posts", forceLoad: false);
 	}
 
+	/// <summary>
+	/// Resets the draft and closes the composer without saving.
+	/// </summary>
+	private void CancelPost()
+	{
+		Draft.Title = string.Empty;
+		Draft.Body = string.Empty;
+		Draft.TagsText = string.Empty;
+		Draft.GenreIds = [];
+
+		tagSearch = string.Empty;
+		selectedTags = [];
+
+		Draft.RequiresMusicSelection = true;
+		Draft.MusicType = MusicRUs.Models.MusicLinkType.Album;
+
+		ResetTracks();
+		Draft.Selection = new MusicRUs.Models.MusicSelection();
+
+		IsComposerOpen = false;
+	}
 	/// <summary>
 	/// Waits for typing to pause and cancels the previous artist search.
 	/// </summary>
@@ -836,8 +851,7 @@
 	/// </summary>
 	private static bool ContainsSearch(string? value, string search)
 	{
-		return !string.IsNullOrWhiteSpace(value)
-			&& value.Contains(search, StringComparison.OrdinalIgnoreCase);
+		return !string.IsNullOrWhiteSpace(value) && value.Contains(search, StringComparison.OrdinalIgnoreCase);
 	}
 
 	/// <summary>

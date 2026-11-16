@@ -99,12 +99,12 @@
 					<div class="grid gap-2 sm:grid-cols-2">
 						<div class="grid gap-2">
 							<label class="text-sm font-medium text-porcelain-50" for="display-name">Display name</label>
-							<InputText id="display-name" name="display-name" autocomplete="nickname" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.DisplayName" />
+							<InputText id="display-name" name="display-name" autocomplete="nickname" class="h-12.5 rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300" @bind-Value="profileModel.DisplayName" />
 						</div>
 
 						<div class="grid gap-2">
-							<label for="profile-location">Country</label>
-							<select id="profile-location" @bind="profileModel.Location" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50">
+							<label for="profile-location" class="text-sm font-medium text-porcelain-50">Country</label>
+							<select id="profile-location" @bind="profileModel.Location" class="h-12.5 rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none transition focus:border-fiery-terracotta-300">
 								<option value="">Prefer not to share</option>
 
 								@foreach (var country in CountryCodes.Countries)
@@ -282,7 +282,7 @@
 						}
 						<div class="grid gap-2 sm:grid-cols-2">
 							<div class="grid gap-2">
-								<p class="text-sm font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Favorite albums</p>
+								<p class="text-sl font-semibold text-pine-teal-300">Favorite albums</p>
 								<div class="flex flex-wrap gap-2">
 									@foreach (var album in profileModel.FavoriteAlbums)
 									{
@@ -293,7 +293,7 @@
 								</div>
 							</div>
 							<div class="grid gap-2">
-								<p class="text-sm font-semibold uppercase tracking-[0.2em] text-pine-teal-300">@(showWanted ? "Wanted albums" : "Owned albums")</p>
+								<p class="text-sl font-semibold text-pine-teal-300">@(showWanted ? "Wanted albums" : "Owned albums")</p>
 								<div class="flex flex-wrap gap-2">
 									@foreach (var album in ActiveCollection)
 									{

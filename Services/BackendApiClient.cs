@@ -93,6 +93,25 @@ public sealed class BackendApiClient
 	}
 
 	/// <summary>
+	/// Sends a JSON POST and returns its response body and status for callers that need the created resource.
+	/// </summary>
+	public async Task<(string Content, HttpStatusCode StatusCode)> PostWithStatusAsync<TBody>(string relativeUrl, TBody body, string? accessToken = null, CancellationToken cancellationToken = default)
+	{
+		if (string.IsNullOrWhiteSpace(accessToken))
+		{
+			return (string.Empty, HttpStatusCode.Unauthorized);
+		}
+
+		using var request = new HttpRequestMessage(HttpMethod.Post, relativeUrl)
+		{
+			Content = JsonContent.Create(body)
+		};
+		AddAuthorizationHeader(request, accessToken);
+		using var response = await httpClient.SendAsync(request, cancellationToken);
+		return (await response.Content.ReadAsStringAsync(cancellationToken), response.StatusCode);
+	}
+
+	/// <summary>
 	/// Sends a JSON PATCH request and reports whether the backend accepted it.
 	/// </summary>
 	public async Task<bool> PatchAsync<TBody>(string relativeUrl, TBody body, string? accessToken = null, CancellationToken cancellationToken = default)
@@ -101,7 +120,7 @@ public sealed class BackendApiClient
 	}
 
 	/// <summary>
-	/// Sends a DELETE request and reports whether the backend accepted it.
+	/// Sends a DELETE request, honoring a boolean response when supplied by the backend.
 	/// </summary>
 	public async Task<bool> DeleteAsync(string relativeUrl, string? accessToken = null, CancellationToken cancellationToken = default)
 	{
@@ -139,7 +158,21 @@ public sealed class BackendApiClient
 			AddAuthorizationHeader(request, accessToken);
 
 			using var response = await httpClient.SendAsync(request, cancellationToken);
-			return response.IsSuccessStatusCode;
+			if (!response.IsSuccessStatusCode)
+			{
+				return false;
+			}
+
+			if (method == HttpMethod.Delete)
+			{
+				var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+				if (bool.TryParse(responseBody.Trim(), out var deleted))
+				{
+					return deleted;
+				}
+			}
+
+			return true;
 		}
 		catch
 		{

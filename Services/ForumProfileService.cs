@@ -125,7 +125,7 @@ public sealed class ForumProfileService
 	}
 
 	/// <summary>
-	/// Creates or updates the profile, then reloads it to confirm favorite artists were saved.
+	/// Updates the backend-managed profile, then reloads it to confirm favorite artists were saved.
 	/// </summary>
 	public async Task<bool> SaveForumProfileAsync(ForumProfile profile, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -141,28 +141,7 @@ public sealed class ForumProfileService
 		}
 
 		profile.UpdatedAt = DateTimeOffset.UtcNow;
-		if (profile.CreatedAt == default)
-		{
-			profile.CreatedAt = profile.UpdatedAt;
-		}
-
-		var existing = await apiClient.GetWithStatusAsync<ForumProfile>("api/ForumProfile/me", currentUser.AccessToken, cancellationToken);
-		var backendProfile = existing.Value;
-		// Only a confirmed missing profile should trigger creation.
-		if (backendProfile is null && existing.StatusCode != System.Net.HttpStatusCode.NotFound)
-		{
-			return false;
-		}
-		if (backendProfile is not null)
-		{
-			profile.Id = backendProfile.Id;
-			profile.UserId = backendProfile.UserId;
-			profile.CreatedAt = backendProfile.CreatedAt;
-		}
-
-		var saved = backendProfile is null
-			? await CreateForumProfileAsync(profile, currentUser, cancellationToken)
-			: await UpdateForumProfileAsync(profile, currentUser, cancellationToken);
+		var saved = await UpdateForumProfileAsync(profile, currentUser, cancellationToken);
 		if (!saved)
 		{
 			return false;
@@ -195,54 +174,9 @@ public sealed class ForumProfileService
 	}
 
 	/// <summary>
-	/// Currently a no-op; profile creation is handled when the setup form is saved.
-	/// </summary>
-	public async Task EnsureForumProfileAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
-	{
-		if (!apiClient.CanUseBackend || userId <= 0)
-		{
-			return;
-		}
-	}
-
-	/// <summary>
-	/// Builds the create-profile payload with favorites and genres, then posts it.
-	/// </summary>
-	private Task<bool> CreateForumProfileAsync(ForumProfile profile, UserSession? currentUser, CancellationToken cancellationToken)
-	{
-		var request = new
-		{
-			Id = 0,
-			profile.UserId,
-			DisplayName = profile.DisplayName.Trim(),
-			Bio = profile.Bio.Trim(),
-			AvatarUrl = profile.AvatarUrl.Trim(),
-			Location = profile.Location.Trim(),
-			WebsiteUrl = profile.WebsiteUrl.Trim(),
-			profile.PrimaryColor,
-			profile.AccentColor,
-			profile.IsPublic,
-			profile.CreatedAt,
-			profile.UpdatedAt,
-			FavoriteArtists = profile.FavoriteArtists.Where(artist => artist.Id > 0).DistinctBy(artist => artist.Id).ToList(),
-			FavoriteAlbums = profile.FavoriteAlbums.Where(album => album.Id > 0).DistinctBy(album => album.Id)
-				.Select(album => new
-				{
-					album.Id, album.SpotifyId, album.Title,
-					// The create contract uses the numeric album-type enum.
-					AlbumType = int.TryParse(album.AlbumType, out var albumType) ? albumType : 0,
-					album.ReleaseDate, TotalTracks = album.TotalTracks ?? 0, album.ImageUrl, album.SpotifyUrl
-				}).ToList(),
-			Genres = profile.Genres.Where(genre => genre.Id > 0).DistinctBy(genre => genre.Id).ToList()
-		};
-
-		return apiClient.PostAsync($"api/ForumProfile/CreateForumProfile/{profile.UserId}", request, currentUser?.AccessToken, cancellationToken);
-	}
-
-	/// <summary>
 	/// Builds a profile update with favorite and genre IDs, then sends it as a PATCH.
 	/// </summary>
-	private Task<bool> UpdateForumProfileAsync(ForumProfile profile, UserSession? currentUser, CancellationToken cancellationToken)
+	private Task<bool> UpdateForumProfileAsync(ForumProfile profile, UserSession currentUser, CancellationToken cancellationToken)
 	{
 		var request = new UpdateForumProfileRequest
 		{
@@ -261,7 +195,7 @@ public sealed class ForumProfileService
 			UpdatedAt = profile.UpdatedAt
 		};
 
-		return apiClient.PatchAsync("api/ForumProfile/me", request, currentUser?.AccessToken, cancellationToken);
+		return apiClient.PatchAsync("api/ForumProfile/me", request, currentUser.AccessToken, cancellationToken);
 	}
 
 

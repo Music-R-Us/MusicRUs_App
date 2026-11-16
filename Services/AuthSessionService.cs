@@ -371,7 +371,6 @@ public sealed class AuthSessionService
 	private async Task<AuthResult> CompleteLoginAsync(UserSession session, CancellationToken cancellationToken)
 	{
 		await SaveSessionAsync(session);
-		await forumProfiles.EnsureForumProfileAsync(CurrentUser?.UserId ?? 0, CurrentUser, cancellationToken);
 		return AuthResult.Success(CurrentUser!);
 	}
 
