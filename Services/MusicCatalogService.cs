@@ -10,9 +10,7 @@ public sealed class MusicCatalogService
 	public string? CollectionError { get; private set; }
 
 	/// <summary>
-
 	/// Stores the API client used for catalog searches and collections.
-
 	/// </summary>
 	public MusicCatalogService(BackendApiClient apiClient)
 	{
@@ -20,9 +18,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Returns the first artist matching the search text.
-
 	/// </summary>
 	public async Task<MusicArtist?> SearchArtistAsync(string name, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -31,9 +27,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Searches the catalog for artists matching the supplied text.
-
 	/// </summary>
 	public async Task<List<MusicArtist>> SearchArtistsAsync(string keywords, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -53,9 +47,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Loads stored albums and fills in artist details when the cached image is missing.
-
 	/// </summary>
 	public async Task<(MusicArtist? Artist, List<MusicAlbum> Albums)> GetArtistDiscographyAsync(
 		int artistId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
@@ -106,9 +98,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Returns the first album matching the search text.
-
 	/// </summary>
 	public async Task<MusicAlbum?> SearchAlbumAsync(string title, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -117,9 +107,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Searches the catalog for albums matching the supplied text.
-
 	/// </summary>
 	public async Task<List<MusicAlbum>> SearchAlbumsAsync(string keywords, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -134,9 +122,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Loads catalog details for a valid artist ID.
-
 	/// </summary>
 	public async Task<MusicArtist?> GetArtistAsync(int artistId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -149,9 +135,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Accepts either a paged album response or a plain list from the artist endpoint.
-
 	/// </summary>
 	public async Task<List<MusicAlbum>> GetAlbumsByArtistAsync(int artistId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -170,9 +154,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Loads a track and uses search results to fill in missing album details.
-
 	/// </summary>
 	public async Task<MusicTrack?> GetTrackAsync(int trackId, UserSession? currentUser = null, CancellationToken cancellationToken = default, string? title = null)
 	{
@@ -189,9 +171,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Loads the selected album's tracks.
-
 	/// </summary>
 	public async Task<List<MusicTrack>> GetAlbumTracksAsync(int albumId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -212,9 +192,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Loads the selected owned or wanted list and flattens their details for display in collection views.
-
 	/// </summary>
 	/// <param name="wanted">True selects the wanted list; false selects the owned list.</param>
 	public async Task<List<MusicCollectionItem>> GetCollectionAsync(int userId, UserSession? currentUser = null, CancellationToken cancellationToken = default, bool wanted = false)
@@ -244,9 +222,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Adds an album to owned with a media format, or to wanted without requiring a format.
-
 	/// </summary>
 	/// <param name="wanted">True selects the wanted list; false selects the owned list.</param>
 	public async Task<bool> AddToCollectionAsync(int userId, int albumId, UserSession? currentUser = null, CancellationToken cancellationToken = default, MediaFormat? format = null, bool wanted = false)
@@ -269,7 +245,7 @@ public sealed class MusicCatalogService
 			: new CreateOwnedMusicCollectionRequest { UserId = userId, AlbumId = albumId, Format = format!.Value };
 		var saved = await apiClient.PostAsync($"api/MusicCollection/{(wanted ? "wanted" : "owned")}",
 			request,
-			currentUser?.AccessToken, cancellationToken);
+			currentUser.AccessToken, cancellationToken);
 		if (!saved)
 		{
 			CollectionError = "Could not save this album to your collection. Please try again.";
@@ -278,9 +254,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Removes an owned or wanted collection entry for the user.
-
 	/// </summary>
 	public async Task<bool> RemoveFromCollectionAsync(int userId, int collectionId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
@@ -291,7 +265,7 @@ public sealed class MusicCatalogService
 			return false;
 		}
 
-		var removed = await apiClient.DeleteAsync($"api/MusicCollection/{userId}/{collectionId}", currentUser?.AccessToken, cancellationToken);
+		var removed = await apiClient.DeleteAsync($"api/MusicCollection/{collectionId}", currentUser.AccessToken, cancellationToken);
 		if (!removed)
 		{
 			CollectionError = "Could not remove this album from your collection. Please try again.";
@@ -300,15 +274,24 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Applies editor additions and removals against a fresh collection, then verifies the result.
-
 	/// </summary>
 	/// <param name="wanted">True selects the wanted list; false selects the owned list.</param>
 	public async Task<bool> SaveCollectionChangesAsync(int userId, IReadOnlyCollection<MusicCollectionItem> original,
 		IReadOnlyCollection<MusicAlbum> desired, IReadOnlyDictionary<int, MediaFormat> formats,
 		UserSession? currentUser = null, CancellationToken cancellationToken = default, bool wanted = false)
 	{
+		CollectionError = null;
+		if (currentUser is null || string.IsNullOrWhiteSpace(currentUser.AccessToken))
+		{
+			CollectionError = "Please log in again before updating your collection.";
+			return false;
+		}
+		if (!apiClient.CanUseBackend || userId <= 0 || currentUser.UserId != userId)
+		{
+			return false;
+		}
+
 		var current = await GetCollectionAsync(userId, currentUser, cancellationToken, wanted);
 		if (CollectionError is not null || !apiClient.CanUseBackend || userId <= 0) return false;
 		var desiredIds = desired.Select(album => album.Id).ToHashSet();
@@ -349,9 +332,7 @@ public sealed class MusicCatalogService
 	}
 
 	/// <summary>
-
 	/// Returns a placeholder with the requested ID if album details cannot be loaded.
-
 	/// </summary>
 	public async Task<MusicAlbum?> GetAlbumByIdAsync(int albumId, UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{

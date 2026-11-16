@@ -371,6 +371,7 @@ public sealed class AuthSessionService
 	private async Task<AuthResult> CompleteLoginAsync(UserSession session, CancellationToken cancellationToken)
 	{
 		await SaveSessionAsync(session);
+
 		return AuthResult.Success(CurrentUser!);
 	}
 
