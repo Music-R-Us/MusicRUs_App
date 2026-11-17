@@ -26,11 +26,15 @@ builder.Services.AddScoped<UserBlockService>();
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient
+builder.Services.AddScoped(sp =>
 {
-    BaseAddress = new Uri(
+    var baseAddress = new Uri(
         builder.Configuration["BackendApi:BaseUrl"]
-        ?? builder.HostEnvironment.BaseAddress)
+        ?? builder.HostEnvironment.BaseAddress);
+    return new HttpClient(new BackendAuthorizationHandler(sp, baseAddress)
+    {
+        InnerHandler = new HttpClientHandler()
+    }) { BaseAddress = baseAddress };
 });
 builder.Services.Configure<BackendApiOptions>(
     builder.Configuration.GetSection("BackendApi"));

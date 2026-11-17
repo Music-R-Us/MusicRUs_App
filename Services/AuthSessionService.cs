@@ -212,6 +212,21 @@ public sealed partial class AuthSessionService
 		Changed?.Invoke();
 	}
 
+	/// <summary>Clears a rejected session locally without making another logout request.</summary>
+	public async Task<bool> ExpireSessionAsync(string rejectedToken)
+	{
+		// Ignore late responses from a previous login and duplicate concurrent 401s.
+		if (CurrentUser is null || CurrentUser.AccessToken != rejectedToken)
+		{
+			return false;
+		}
+
+		CurrentUser = null;
+		await jsRuntime.InvokeVoidAsync("MusicRUsAuth.clearSession");
+		Changed?.Invoke();
+		return true;
+	}
+
 	/// <summary>
 	/// Deletes the signed-in user's account and clears the session only after success.
 	/// </summary>
