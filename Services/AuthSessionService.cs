@@ -9,7 +9,7 @@ namespace MusicRUs.Services;
 /// <summary>
 /// Manages the browser session and passes the current user to profile and music services.
 /// </summary>
-public sealed class AuthSessionService
+public sealed partial class AuthSessionService
 {
 	private readonly IJSRuntime jsRuntime;
 	private readonly HttpClient httpClient;
@@ -197,14 +197,41 @@ public sealed class AuthSessionService
 	}
 
 	/// <summary>
-	/// Clears the browser session and notifies components that the user signed out.
+	/// Logs out through the backend, then clears the browser session and notifies components.
 	/// </summary>
 	public async Task SignOutAsync()
 	{
 		await InitializeAsync();
+		if (apiClient.CanUseBackend && !string.IsNullOrWhiteSpace(CurrentUser?.AccessToken))
+		{
+			await apiClient.PostAsync("api/User/logout", accessToken: CurrentUser.AccessToken);
+		}
+
 		CurrentUser = null;
 		await jsRuntime.InvokeVoidAsync("MusicRUsAuth.clearSession");
 		Changed?.Invoke();
+	}
+
+	/// <summary>
+	/// Deletes the signed-in user's account and clears the session only after success.
+	/// </summary>
+	public async Task<bool> DeleteUserAsync(CancellationToken cancellationToken = default)
+	{
+		await InitializeAsync();
+		if (!apiClient.CanUseBackend || string.IsNullOrWhiteSpace(CurrentUser?.AccessToken))
+		{
+			return false;
+		}
+
+		if (!await apiClient.DeleteAsync("api/User/deleteUser/me", CurrentUser.AccessToken, cancellationToken))
+		{
+			return false;
+		}
+
+		CurrentUser = null;
+		await jsRuntime.InvokeVoidAsync("MusicRUsAuth.clearSession");
+		Changed?.Invoke();
+		return true;
 	}
 
 	/// <summary>

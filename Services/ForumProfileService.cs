@@ -71,18 +71,8 @@ public sealed class ForumProfileService
 			return null;
 		}
 
-		var key = (userId, currentUser?.AccessToken);
-		if (!profileReads.TryGetValue(key, out var cached) || cached.Expires <= DateTimeOffset.UtcNow)
-		{
-			cached = (apiClient.GetAsync<ForumProfile>($"api/ForumProfile/user/{userId}", currentUser?.AccessToken, cancellationToken), DateTimeOffset.UtcNow.AddSeconds(10));
-			profileReads[key] = cached;
-		}
-		var profile = await cached.Load;
-		if (profile is null && profileReads.TryGetValue(key, out var latest) && latest.Load == cached.Load)
-		{
-			profileReads.Remove(key);
-		}
-		return profile;
+		// Another account can change a block at any time. Do not reuse its profile access result.
+		return await apiClient.GetAsync<ForumProfile>($"api/ForumProfile/user/{userId}", currentUser?.AccessToken, cancellationToken);
 	}
 
 	/// <summary>

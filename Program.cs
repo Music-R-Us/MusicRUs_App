@@ -21,6 +21,7 @@ builder.Services.AddScoped<ConcertService>();
 builder.Services.AddScoped<TwoFactorService>();
 builder.Services.AddScoped<ArtistSubscriptionService>();
 builder.Services.AddScoped<FriendshipService>();
+builder.Services.AddScoped<UserBlockService>();
 
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");

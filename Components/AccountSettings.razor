@@ -1,0 +1,120 @@
+@using System.ComponentModel.DataAnnotations
+@inject MusicRUs.Services.AuthSessionService AuthSession
+@inject IJSRuntime JS
+@inject MusicRUs.Services.ToastService ToastService
+
+<section class="grid gap-5 border-t border-granite-800/80 pt-5" aria-labelledby="account-settings-title">
+    <h2 id="account-settings-title" class="text-2xl font-semibold text-porcelain-50">Account settings</h2>
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <p role="status" class="rounded-2xl bg-coffee-bean-950/60 p-4 text-sm text-porcelain-50">@message</p>
+    }
+    <EditForm Model="username" OnValidSubmit="UpdateUsernameAsync">
+        <DataAnnotationsValidator />
+        <fieldset disabled="@(Disabled || busy)" class="grid gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+            <legend class="px-2 font-semibold text-porcelain-50">Change username</legend>
+            <label for="account-username" class="text-sm text-porcelain-50">New username</label>
+            <InputText id="account-username" autocomplete="username" class="@InputClass" @bind-Value="username.NewUsername" />
+            <ValidationSummary class="text-sm text-fiery-terracotta-200" />
+            <button type="submit" class="@ButtonClass">Update username</button>
+        </fieldset>
+    </EditForm>
+    <EditForm Model="email" OnValidSubmit="UpdateEmailAsync">
+        <DataAnnotationsValidator />
+        <fieldset disabled="@(Disabled || busy)" class="grid gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+            <legend class="px-2 font-semibold text-porcelain-50">Change email</legend>
+            <label for="account-current-email" class="text-sm text-porcelain-50">Current email</label>
+            <InputText id="account-current-email" type="email" autocomplete="email" class="@InputClass" @bind-Value="email.CurrentEmail" />
+            <label for="account-new-email" class="text-sm text-porcelain-50">New email</label>
+            <InputText id="account-new-email" type="email" autocomplete="email" class="@InputClass" @bind-Value="email.NewEmail" />
+            <label for="account-email-password" class="text-sm text-porcelain-50">Current password</label>
+            <InputText id="account-email-password" type="password" autocomplete="current-password" class="@InputClass" @bind-Value="email.CurrentPassword" />
+            <ValidationSummary class="text-sm text-fiery-terracotta-200" />
+            <button type="submit" class="@ButtonClass">Update email</button>
+        </fieldset>
+    </EditForm>
+    <EditForm Model="password" OnValidSubmit="UpdatePasswordAsync">
+        <DataAnnotationsValidator />
+        <fieldset disabled="@(Disabled || busy)" class="grid gap-3 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5">
+            <legend class="px-2 font-semibold text-porcelain-50">Change password</legend>
+            <label for="account-current-password" class="text-sm text-porcelain-50">Current password</label>
+            <InputText id="account-current-password" type="password" autocomplete="current-password" class="@InputClass" @bind-Value="password.CurrentPassword" />
+            <label for="account-new-password" class="text-sm text-porcelain-50">New password</label>
+            <InputText id="account-new-password" type="password" autocomplete="new-password" class="@InputClass" @bind-Value="password.NewPassword" />
+            <p class="text-sm text-porcelain-50/70">Use at least 8 characters, including uppercase and lowercase letters, a number, and a special character (@@$!%*?&amp;#_).</p>
+            <label for="account-confirm-password" class="text-sm text-porcelain-50">Confirm new password</label>
+            <InputText id="account-confirm-password" type="password" autocomplete="new-password" class="@InputClass" @bind-Value="password.ConfirmPassword" />
+            <ValidationSummary class="text-sm text-fiery-terracotta-200" />
+            <button type="submit" class="@ButtonClass">Update password</button>
+        </fieldset>
+    </EditForm>
+</section>
+
+@code {
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<bool> BusyChanged { get; set; }
+    private bool busy;
+    private string? message;
+    private UsernameModel username = new();
+    private EmailModel email = new();
+    private PasswordModel password = new();
+    private const string InputClass = "w-full rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-4 py-3 text-porcelain-50 outline-none focus:border-fiery-terracotta-300";
+    private const string ButtonClass = "w-fit rounded-2xl bg-fiery-terracotta-500 px-5 py-3 font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:opacity-60";
+
+    private Task UpdateUsernameAsync() => ConfirmUpdateAsync("Username updated.", () => AuthSession.UpdateUsernameAsync(username.NewUsername), () => username = new());
+    private Task UpdateEmailAsync() => ConfirmUpdateAsync("Email updated.", () => AuthSession.UpdateEmailAsync(email.CurrentEmail, email.NewEmail, email.CurrentPassword), () => email = new());
+    private Task UpdatePasswordAsync() => ConfirmUpdateAsync("Password updated.", () => AuthSession.UpdatePasswordAsync(password.CurrentPassword, password.NewPassword), () => password = new());
+
+    /// <summary>
+    /// Confirms a valid change, prevents duplicate submissions, and reports the result.
+    /// </summary>
+    private async Task ConfirmUpdateAsync(string successMessage, Func<Task<MusicRUs.Services.AuthResult>> update, Action reset)
+    {
+        if (Disabled || busy) return;
+        busy = true;
+        await BusyChanged.InvokeAsync(true);
+        try
+        {
+            if (!await JS.InvokeAsync<bool>("confirm", "Are you sure?")) return;
+            message = "Updating account...";
+            var result = await update();
+            message = result.IsSuccess ? successMessage : result.ErrorMessage;
+            if (result.IsSuccess)
+            {
+                reset();
+                ToastService.Show(successMessage);
+            }
+            email.CurrentPassword = string.Empty;
+            password.CurrentPassword = password.NewPassword = password.ConfirmPassword = string.Empty;
+        }
+        finally
+        {
+            busy = false;
+            await BusyChanged.InvokeAsync(false);
+        }
+    }
+
+    private sealed class UsernameModel
+    {
+        [Required, Display(Name = "New username")]
+        public string NewUsername { get; set; } = string.Empty;
+    }
+    private sealed class EmailModel
+    {
+        [Required, EmailAddress, Display(Name = "Current email")]
+        public string CurrentEmail { get; set; } = string.Empty;
+        [Required, EmailAddress, Display(Name = "New email")]
+        public string NewEmail { get; set; } = string.Empty;
+        [Required, Display(Name = "Current password")]
+        public string CurrentPassword { get; set; } = string.Empty;
+    }
+    private sealed class PasswordModel
+    {
+        [Required, Display(Name = "Current password")]
+        public string CurrentPassword { get; set; } = string.Empty;
+        [Required, MinLength(8), RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_])[A-Za-z\d@$!%*?&#_]{8,}$", ErrorMessage = "Use at least 8 characters with uppercase and lowercase letters, a number, and a supported special character."), Display(Name = "New password")]
+        public string NewPassword { get; set; } = string.Empty;
+        [Required, Compare(nameof(NewPassword), ErrorMessage = "The new passwords do not match."), Display(Name = "Confirm new password")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

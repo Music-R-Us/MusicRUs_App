@@ -1,0 +1,12 @@
+<div class="grid gap-4 rounded-2xl border border-granite-800/80 gradient-surface p-8 text-center backdrop-blur">
+    <p class="text-porcelain-50/80">@Message</p>
+    <a href="/loginpick"
+       class="mx-auto rounded-full bg-fiery-terracotta-500 px-5 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400">
+        Login / Signup
+    </a>
+</div>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = "Sign in to continue.";
+}

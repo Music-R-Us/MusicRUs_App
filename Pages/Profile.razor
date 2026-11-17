@@ -1,4 +1,4 @@
-@page "/{username}"
+﻿@page "/{username}"
 @page "/profile/{UserId:int}"
 
 @layout MainLayout
@@ -6,6 +6,7 @@
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject MusicRUs.Services.ToastService ToastService
 @inject NavigationManager Navigation
+@inject MusicRUs.Services.UserBlockService UserBlocks
 
 <PageTitle>@(CurrentProfile?.DisplayName ?? DisplayUsername) Profile</PageTitle>
 
@@ -17,7 +18,7 @@
 	<div class="grid gap-6 rounded-4xl border border-granite-800/80 bg-linear-to-br from-(--profile-start) to-(--profile-end) p-8 shadow-xl backdrop-blur" style="@ProfileBackgroundStyle">
 		<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-5">
-				@if (HasAvatar)
+				@if (blockStatusLoaded && !ContentBlocked && HasAvatar)
 				{
 					<img src="@CurrentProfile?.AvatarUrl" alt="@DisplayUsername avatar" class="h-20 w-20 rounded-full bg-granite-300 object-cover" />
 				}
@@ -28,7 +29,10 @@
 					</div>
 				}
 				<div class="grid gap-1">
-					<p class="text-3xl font-semibold text-porcelain-50 font-outline-1">Profile</p>
+					@if (!isBlockedByUser)
+					{
+						<p class="text-3xl font-semibold text-porcelain-50 font-outline-1">Profile</p>
+					}
 					<h1 class="text-4xl font-semibold tracking-tight text-porcelain-50 sm:text-5xl font-outline-1">@DisplayUsername</h1>
 				</div>
 			</div>
@@ -46,11 +50,30 @@
 					</button>
 				</div>
 			}
+			else if (CanBlockProfile && blockStatusLoaded && !isBlockedByUser)
+			{
+				<button type="button" @onclick="ToggleBlockAsync" disabled="@blockBusy"
+					class="self-start rounded-full bg-fiery-terracotta-500/90 px-4 py-2 text-sm font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-500/70 sm:self-center">
+					@(blockBusy ? "Saving..." : hasBlockedUser ? "Unblock user" : "Block user")
+				</button>
+			}
 		</div>
 
 		@if (CurrentProfile is not null)
 		{
-			@if (CurrentProfile.IsPublic == true || CurrentProfile.UserId == AuthSession.CurrentUser?.UserId)
+			@if (isBlockedByUser)
+			{
+				<p role="status" class="rounded-2xl bg-coffee-bean-950/60 p-5 text-porcelain-50">You've been blocked by this user</p>
+			}
+			else if (hasBlockedUser)
+			{
+				<p role="status" class="rounded-2xl bg-coffee-bean-950/60 p-5 text-porcelain-50">You've blocked this user. Unblock them to see their content.</p>
+			}
+			else if (!blockStatusLoaded)
+			{
+				<p role="status" class="p-5 text-porcelain-50">@(blockStatusError ?? "Checking profile access...")</p>
+			}
+			else if (CurrentProfile.IsPublic == true || CurrentProfile.UserId == AuthSession.CurrentUser?.UserId)
 			{
 				<div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80">
 					<div>
@@ -126,7 +149,7 @@
 
 					</div>
 					<div class="grid content-start gap-4 self-start rounded-2xl border border-granite-800/80 bg-coffee-bean-950/60 p-5 text-porcelain-50/80 sm:col-span-2">
-						<button type="button" aria-pressed="@showWanted" @onclick="() => showWanted = !showWanted" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50">
+						<button type="button" aria-pressed="@showWanted" @onclick="() => showWanted = !showWanted" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">
                             @(showWanted ? "Wanted / Switch to Owned" : "Owned / Switch to Wanted")
                         </button>
                         @if (Collection.Count > 0)
@@ -220,6 +243,12 @@
 	private List<MusicCollectionItem> Collection => showWanted ? wantedCollection : ownedCollection;
 
 	private ForumProfile? CurrentProfile;
+	private bool blockStatusLoaded;
+	private bool hasBlockedUser;
+	private bool isBlockedByUser;
+	private bool blockBusy;
+	private string? blockStatusError;
+	private int loadVersion;
 
 	/// <summary>
 
@@ -247,8 +276,8 @@
 	}
 
 	private string ProfileBackgroundStyle =>
-		$"--profile-start: {SafeColor(CurrentProfile?.PrimaryColor, "#2E0B05")}; " +
-		$"--profile-end: {SafeColor(CurrentProfile?.AccentColor, "#B82A14")};";
+		$"--profile-start: {SafeColor(ContentBlocked || !blockStatusLoaded ? null : CurrentProfile?.PrimaryColor, "#2E0B05")}; " +
+		$"--profile-end: {SafeColor(ContentBlocked || !blockStatusLoaded ? null : CurrentProfile?.AccentColor, "#B82A14")};";
 
 	/// <summary>
 
@@ -257,18 +286,41 @@
 	/// </summary>
 	protected override async Task OnParametersSetAsync()
 	{
+		var version = ++loadVersion;
+		CurrentProfile = null;
+		blockStatusLoaded = false;
+		blockStatusError = null;
+		hasBlockedUser = false;
+		isBlockedByUser = false;
 		await AuthSession.InitializeAsync();
 		ownedCollection = [];
 		wantedCollection = [];
 		collectionError = null;
-		CurrentProfile = UserId > 0
+		var profile = UserId > 0
 			? await AuthSession.GetForumProfileAsync(UserId)
 			: await AuthSession.GetProfileAsync(Username);
-		if (CurrentProfile?.UserId > 0)
+		if (version != loadVersion) return;
+		CurrentProfile = profile;
+		if (CanBlockProfile && AuthSession.CurrentUser is { } viewer)
 		{
-			ownedCollection = await AuthSession.GetCollectionAsync(CurrentProfile.UserId);
+			var blocks = await UserBlocks.GetAsync(viewer);
+			if (version != loadVersion) return;
+			isBlockedByUser = profile!.IsBlockedByUser || blocks?.Any(block => block.BlockerId == profile.UserId && block.BlockedId == viewer.UserId) == true;
+			hasBlockedUser = blocks?.Any(block => block.BlockerId == viewer.UserId && block.BlockedId == profile.UserId) == true;
+			blockStatusLoaded = blocks is not null;
+			if (!blockStatusLoaded) blockStatusError = "Unable to check profile access. Please try again later.";
+		}
+		else blockStatusLoaded = true;
+		if (CurrentProfile?.UserId > 0 && blockStatusLoaded && !ContentBlocked
+			&& (CurrentProfile.IsPublic || CanEditProfile))
+		{
+			var owned = await AuthSession.GetCollectionAsync(CurrentProfile.UserId);
+			if (version != loadVersion) return;
+			ownedCollection = owned;
 			collectionError = AuthSession.CollectionError;
-			wantedCollection = await AuthSession.GetCollectionAsync(CurrentProfile.UserId, wanted: true);
+			var wanted = await AuthSession.GetCollectionAsync(CurrentProfile.UserId, wanted: true);
+			if (version != loadVersion) return;
+			wantedCollection = wanted;
 			collectionError ??= AuthSession.CollectionError;
 		}
 	}
@@ -290,6 +342,38 @@
 	private bool CanEditProfile => AuthSession.CurrentUser is not null
 		&& CurrentProfile?.UserId > 0
 		&& AuthSession.CurrentUser.UserId == CurrentProfile.UserId;
+
+	private bool CanBlockProfile => AuthSession.CurrentUser is not null
+		&& CurrentProfile?.UserId > 0 && !CanEditProfile;
+
+	private bool ContentBlocked => isBlockedByUser || hasBlockedUser;
+
+	private async Task ToggleBlockAsync()
+	{
+		if (blockBusy || !CanBlockProfile || AuthSession.CurrentUser is not { } viewer) return;
+		var targetId = CurrentProfile!.UserId;
+		var version = loadVersion;
+		var wasBlocked = hasBlockedUser;
+		blockBusy = true;
+		try
+		{
+			var success = wasBlocked
+				? await UserBlocks.UnblockAsync(viewer, targetId)
+				: await UserBlocks.BlockAsync(viewer, targetId);
+			if (version != loadVersion) return;
+			if (success)
+			{
+				hasBlockedUser = !wasBlocked;
+				ownedCollection = [];
+				wantedCollection = [];
+				if (wasBlocked) await OnParametersSetAsync();
+			}
+			ToastService.Show(success
+				? (wasBlocked ? "User unblocked" : "User blocked")
+				: "Unable to update block. Please try again.");
+		}
+		finally { blockBusy = false; }
+	}
 
 	private string EditProfileUrl
 	{

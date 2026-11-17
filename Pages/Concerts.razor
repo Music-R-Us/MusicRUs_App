@@ -20,7 +20,10 @@
     <div class="grid gap-4 rounded-2xl border border-granite-800/80 bg-coffee-bean-950 p-6 text-porcelain-50">
         <div class="flex flex-wrap gap-3">
             <button type="button" @onclick="() => ChangeViewAsync(false)" disabled="@busy" aria-pressed="@(!showSubscriptions)" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">Search artists</button>
-            <button type="button" @onclick="() => ChangeViewAsync(true)" disabled="@busy" aria-pressed="@showSubscriptions" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">Subscribed artists</button>
+            @if(AuthSession.CurrentUser is { UserId: > 0 })
+            {
+                <button type="button" @onclick="() => ChangeViewAsync(true)" disabled="@busy" aria-pressed="@showSubscriptions" class="w-fit rounded-full border border-granite-700 bg-granite-900/60 px-4 py-2 text-sm font-semibold text-porcelain-50 hover:bg-granite-800/60 transition">Subscribed artists</button>
+            }
         </div>
         <label for="concert-country" class="grid gap-2 text-sm text-porcelain-50">
             Country

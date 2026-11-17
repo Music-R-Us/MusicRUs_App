@@ -59,7 +59,7 @@
 		@if (artistResults.Count > 0 && (searchMode == "both" || searchMode == "artist"))
 		{
 			<div class="grid gap-4">
-				<h2 class="text-lg font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Artists</h2>
+				<h2 class="text-xl font-semibold  text-pine-teal-300">Artists</h2>
 				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					@foreach (var artist in artistResults)
 					{
@@ -87,7 +87,7 @@
 		@if (albumResults.Count > 0 && (searchMode == "both" || searchMode == "album"))
 		{
 			<div class="grid gap-4">
-				<h2 class="text-lg font-semibold uppercase tracking-[0.2em] text-pine-teal-300">Albums</h2>
+				<h2 class="text-xl font-semibold text-pine-teal-300">Albums</h2>
 				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					@foreach (var album in albumResults)
 					{

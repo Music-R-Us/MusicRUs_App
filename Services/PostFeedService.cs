@@ -9,16 +9,18 @@ public sealed class PostFeedService
 	private readonly HttpClient httpClient;
 	private readonly BackendApiClient apiClient;
 	private readonly BackendApiOptions backendOptions;
+	private readonly UserBlockService userBlocks;
 	private readonly List<PostItem> posts = [];
 	private readonly object gate = new();
 
 	/// <summary>
 	/// Stores the HTTP client and settings used for backend and local posts.
 	/// </summary>
-	public PostFeedService(HttpClient httpClient, IOptions<BackendApiOptions> backendApiOptions, BackendApiClient apiClient)
+	public PostFeedService(HttpClient httpClient, IOptions<BackendApiOptions> backendApiOptions, BackendApiClient apiClient, UserBlockService userBlocks)
 	{
 		this.httpClient = httpClient;
 		this.apiClient = apiClient;
+		this.userBlocks = userBlocks;
 		backendOptions = backendApiOptions.Value;
 	}
 
@@ -27,38 +29,42 @@ public sealed class PostFeedService
 	/// </summary>
 	public async Task<IReadOnlyList<PostItem>> GetRecentPostsAsync(UserSession? currentUser = null, CancellationToken cancellationToken = default)
 	{
+		var hidden = await userBlocks.GetHiddenUserIdsAsync(currentUser, cancellationToken);
+		if (hidden is null) return [];
 		if (CanUseBackend)
 		{
-			var postsFromApi = await TryGetForumPostsAsync(cancellationToken);
+			var postsFromApi = await TryGetForumPostsAsync(cancellationToken, currentUser?.AccessToken);
 			if (postsFromApi is not null)
 			{
-				return SortPosts(postsFromApi, currentUser);
+				return SortPosts(postsFromApi.Where(post => !hidden.Contains(post.UserId)), currentUser);
 			}
 		}
 
 		lock (gate)
 		{
-			return SortPosts(posts, currentUser);
+			return SortPosts(posts.Where(post => !hidden.Contains(post.UserId)), currentUser);
 		}
 	}
 
 	/// <summary>
 	/// Looks up a post in the backend, then falls back to the in-memory list.
 	/// </summary>
-	public async Task<PostItem?> GetPostAsync(string postKey, CancellationToken cancellationToken = default)
+	public async Task<PostItem?> GetPostAsync(string postKey, CancellationToken cancellationToken = default, UserSession? currentUser = null)
 	{
+		var hidden = await userBlocks.GetHiddenUserIdsAsync(currentUser, cancellationToken);
+		if (hidden is null) return null;
 		if (CanUseBackend)
 		{
-			var postFromApi = await TryGetForumPostAsync(postKey, cancellationToken);
+			var postFromApi = await TryGetForumPostAsync(postKey, cancellationToken, currentUser?.AccessToken);
 			if (postFromApi is not null)
 			{
-				return postFromApi;
+				return hidden.Contains(postFromApi.UserId) ? null : postFromApi;
 			}
 		}
 
 		lock (gate)
 		{
-			return posts.FirstOrDefault(post => IsPostMatch(post, postKey));
+			return posts.FirstOrDefault(post => IsPostMatch(post, postKey) && !hidden.Contains(post.UserId));
 		}
 	}
 
@@ -297,37 +303,48 @@ public sealed class PostFeedService
 	/// <summary>
 	/// Pages backend comments when available, otherwise uses comments already held locally.
 	/// </summary>
-	public async Task<CommentPage> GetCommentsAsync(PostItem post, int page, int pageSize = 10, CancellationToken cancellationToken = default)
+	public async Task<CommentPage> GetCommentsAsync(PostItem post, int page, int pageSize = 10, CancellationToken cancellationToken = default, UserSession? currentUser = null)
 	{
 		page = Math.Max(1, page);
 		pageSize = Math.Max(1, pageSize);
+		var hidden = await userBlocks.GetHiddenUserIdsAsync(currentUser, cancellationToken);
+		if (hidden is null || hidden.Contains(post.UserId)) return CommentPage.Empty(page, pageSize);
 
 		if (CanUseBackend && post.PostId > 0)
 		{
-			var commentsFromApi = await TryGetCommentsForPostAsync(post.PostId, cancellationToken);
+			var commentsFromApi = await TryGetCommentsForPostAsync(post.PostId, cancellationToken, currentUser?.AccessToken);
 			if (commentsFromApi is not null && (commentsFromApi.Count > 0 || post.Comments.Count == 0))
 			{
-				return CreateCommentPage(commentsFromApi, page, pageSize);
+				return CreateCommentPage(commentsFromApi.Where(comment => !hidden.Contains(comment.UserId)), page, pageSize);
 			}
 		}
 
 		lock (gate)
 		{
 			var savedPost = posts.FirstOrDefault(item => IsPostMatch(item, post.RouteId)) ?? post;
-			return CreateCommentPage(savedPost.Comments, page, pageSize);
+			return CreateCommentPage(savedPost.Comments.Where(comment => !hidden.Contains(comment.UserId)), page, pageSize);
 		}
 	}
 
 	private bool CanUseBackend => backendOptions.UseBackendApi && httpClient.BaseAddress is not null;
 
+	private static HttpRequestMessage CreateReadRequest(string route, string? accessToken)
+	{
+		var request = new HttpRequestMessage(HttpMethod.Get, route);
+		if (!string.IsNullOrWhiteSpace(accessToken))
+			request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+		return request;
+	}
+
 	/// <summary>
 	/// Loads backend posts and their comment counts, returning null if loading fails.
 	/// </summary>
-	private async Task<List<PostItem>?> TryGetForumPostsAsync(CancellationToken cancellationToken)
+	private async Task<List<PostItem>?> TryGetForumPostsAsync(CancellationToken cancellationToken, string? accessToken = null)
 	{
 		try
 		{
-			using var response = await httpClient.GetAsync("api/ForumPost", cancellationToken);
+			using var request = CreateReadRequest("api/ForumPost", accessToken);
+			using var response = await httpClient.SendAsync(request, cancellationToken);
 			if (!response.IsSuccessStatusCode)
 			{
 				return null;
@@ -336,7 +353,7 @@ public sealed class PostFeedService
 			var content = await response.Content.ReadAsStringAsync(cancellationToken);
 			using var document = JsonDocument.Parse(content);
 			var posts = PostFeedMapper.ReadPostList(document.RootElement);
-			await PopulateCommentCountsAsync(posts, cancellationToken);
+			await PopulateCommentCountsAsync(posts, cancellationToken, accessToken);
 			return posts;
 		}
 		catch
@@ -348,11 +365,12 @@ public sealed class PostFeedService
 	/// <summary>
 	/// Loads one backend post and its comment count, returning null if loading fails.
 	/// </summary>
-	private async Task<PostItem?> TryGetForumPostAsync(string postKey, CancellationToken cancellationToken)
+	private async Task<PostItem?> TryGetForumPostAsync(string postKey, CancellationToken cancellationToken, string? accessToken = null)
 	{
 		try
 		{
-			using var response = await httpClient.GetAsync($"api/ForumPost/{Uri.EscapeDataString(postKey)}", cancellationToken);
+			using var request = CreateReadRequest($"api/ForumPost/{Uri.EscapeDataString(postKey)}", accessToken);
+			using var response = await httpClient.SendAsync(request, cancellationToken);
 			if (!response.IsSuccessStatusCode)
 			{
 				return null;
@@ -363,7 +381,7 @@ public sealed class PostFeedService
 			var post = PostFeedMapper.ReadPost(document.RootElement);
 			if (post is not null)
 			{
-				await PopulateCommentCountsAsync([post], cancellationToken);
+				await PopulateCommentCountsAsync([post], cancellationToken, accessToken);
 			}
 
 			return post;
@@ -410,7 +428,7 @@ public sealed class PostFeedService
 	/// <summary>
 	/// Tries both supported comment routes and filters out comments belonging to other posts.
 	/// </summary>
-	private async Task<List<CommentItem>?> TryGetCommentsForPostAsync(int postId, CancellationToken cancellationToken)
+	private async Task<List<CommentItem>?> TryGetCommentsForPostAsync(int postId, CancellationToken cancellationToken, string? accessToken = null)
 	{
 		var urls = new[]
 		{
@@ -422,7 +440,8 @@ public sealed class PostFeedService
 		{
 			try
 			{
-				using var response = await httpClient.GetAsync(url, cancellationToken);
+				using var request = CreateReadRequest(url, accessToken);
+				using var response = await httpClient.SendAsync(request, cancellationToken);
 				if (!response.IsSuccessStatusCode)
 				{
 					continue;
@@ -488,7 +507,7 @@ public sealed class PostFeedService
 	/// <summary>
 	/// Loads each backend post's comments to refresh its comments and count.
 	/// </summary>
-	private async Task PopulateCommentCountsAsync(IEnumerable<PostItem> postsToPopulate, CancellationToken cancellationToken)
+	private async Task PopulateCommentCountsAsync(IEnumerable<PostItem> postsToPopulate, CancellationToken cancellationToken, string? accessToken = null)
 	{
 		foreach (var post in postsToPopulate)
 		{
@@ -497,7 +516,7 @@ public sealed class PostFeedService
 				continue;
 			}
 
-			var comments = await TryGetCommentsForPostAsync(post.PostId, cancellationToken);
+			var comments = await TryGetCommentsForPostAsync(post.PostId, cancellationToken, accessToken);
 			if (comments is null)
 			{
 				continue;

@@ -9,6 +9,7 @@
 
 @inject MusicRUs.Services.AuthSessionService AuthSession
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @inject MusicRUs.Services.ProfileColorService ProfileColors
 
 @inject MusicRUs.Services.ToastService ToastService
@@ -319,15 +320,21 @@
 					<TwoFactorSettings />
 
 					<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-						<button type="button" @onclick="SkipSetup" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-5 py-3 text-base font-semibold text-porcelain-50/80 transition hover:text-porcelain-50">
+						<button type="button" disabled="@(isSaving || isDeleting || accountBusy)" @onclick="SkipSetup" class="rounded-2xl border border-granite-800/80 bg-fiery-terracotta-900/80 px-5 py-3 text-base font-semibold text-porcelain-50/80 transition hover:text-porcelain-50">
 							Skip for now
 						</button>
-						<button type="submit" disabled="@isSaving" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-base font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
+						<button type="submit" disabled="@(isSaving || isDeleting || accountBusy)" class="rounded-2xl bg-fiery-terracotta-500 px-5 py-3 text-base font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-400 disabled:cursor-not-allowed disabled:opacity-60">
 							@(isSaving ? "Saving..." : "Save profile")
 						</button>
 					</div>
 				</div>
 			</EditForm>
+			<AccountSettings Disabled="@(isSaving || isDeleting || accountBusy)" BusyChanged="@(value => accountBusy = value)" />
+			<div class="border-t border-granite-800/80 pt-5">
+				<button type="button" disabled="@(isSaving || isDeleting || accountBusy)" @onclick="DeleteProfileAsync" class="rounded-2xl border border-fiery-terracotta-400 bg-fiery-terracotta-950/80 px-5 py-3 text-base font-semibold text-porcelain-50 transition hover:bg-fiery-terracotta-900 disabled:cursor-not-allowed disabled:opacity-60">
+					@(isDeleting ? "Deleting..." : "Delete profile")
+				</button>
+			</div>
 		}
 	</div>
 </section>
@@ -337,6 +344,8 @@
 	public int UserId { get; set; }
 	private bool isReady;
 	private bool isSaving;
+	private bool isDeleting;
+	private bool accountBusy;
 	private List<MusicCollectionItem> originalCollection = [];
 	private readonly Dictionary<int, MediaFormat> newCollectionFormats = [];
 	private MediaFormat? selectedCollectionFormat;
@@ -437,7 +446,7 @@
 	/// </summary>
 	private async Task HandleSaveAsync()
 	{
-		if (isSaving) return;
+		if (isSaving || isDeleting || accountBusy) return;
 		if (AuthSession.CurrentUser is null)
 		{
 			Navigation.NavigateTo("/loginpick");
@@ -475,9 +484,31 @@
 
 	/// <summary>
 
-	/// Opens the current user's profile, or login if they are signed out.
+	/// Confirms account deletion before sending the authenticated delete request.
 
 	/// </summary>
+	private async Task DeleteProfileAsync()
+	{
+		if (isSaving || isDeleting || accountBusy) return;
+		isDeleting = true;
+		try
+		{
+			if (!await JS.InvokeAsync<bool>("confirm", "Are you sure? This deletes your user account.")) return;
+			formMessage = string.Empty;
+			if (!await AuthSession.DeleteUserAsync())
+			{
+				formMessage = "Could not delete your profile. Please try again.";
+				return;
+			}
+			ToastService.Show("Profile deleted");
+			Navigation.NavigateTo("/loginpick");
+		}
+		finally
+		{
+			isDeleting = false;
+		}
+	}
+
 	private void SkipSetup()
 	{
 		if (AuthSession.CurrentUser is null)

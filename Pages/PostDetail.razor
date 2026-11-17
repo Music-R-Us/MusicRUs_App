@@ -208,7 +208,7 @@ else
 	protected override async Task OnParametersSetAsync()
 	{
 		await AuthSession.InitializeAsync();
-		Post = await PostFeed.GetPostAsync(PostId);
+		Post = await PostFeed.GetPostAsync(PostId, currentUser: AuthSession.CurrentUser);
 		await LoadMusicDetailsAsync();
 		PostAuthorProfile = Post?.UserId > 0
 			? await AuthSession.GetForumProfileAsync(Post.UserId)
@@ -339,7 +339,7 @@ else
 			return;
 		}
 
-		CommentPage = await PostFeed.GetCommentsAsync(Post, page, CommentsPageSize);
+		CommentPage = await PostFeed.GetCommentsAsync(Post, page, CommentsPageSize, currentUser: AuthSession.CurrentUser);
 		await LoadCommentProfilesAsync();
 	}
 

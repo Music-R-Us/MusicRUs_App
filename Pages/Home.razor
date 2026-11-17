@@ -79,7 +79,8 @@
 	/// </summary>
 	protected override async Task OnInitializedAsync()
 	{
-		var posts = await PostFeed.GetRecentPostsAsync();
+		await AuthSession.InitializeAsync();
+		var posts = await PostFeed.GetRecentPostsAsync(AuthSession.CurrentUser);
 		recentPosts = posts.OrderByDescending(post => post.CreatedAtUtc).Take(10).ToList();
 		foreach (var userId in recentPosts.Select(post => post.UserId).Where(id => id > 0).Distinct())
 		{

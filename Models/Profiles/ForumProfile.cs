@@ -22,6 +22,8 @@ public sealed class ForumProfile
 
 	public bool IsPublic { get; set; } = true;
 
+	public bool IsBlockedByUser { get; set; }
+
 	public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
 	public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
