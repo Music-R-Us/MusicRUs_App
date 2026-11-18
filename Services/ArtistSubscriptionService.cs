@@ -14,7 +14,7 @@ public sealed class ArtistSubscriptionService(BackendApiClient apiClient)
     /// Subscribes the user to an artist with the selected country for concert updates.
     /// </summary>
     public Task<bool> SubscribeAsync(UserSession user, int artistId, string countryCode) =>
-        apiClient.PostAsync($"api/ArtistSubscription/subscribe/user/me/{artistId}",
+        apiClient.PostAsync($"api/ArtistSubscription/user/me/artist/{artistId}",
             new SubscribeArtistRequest { CountryCode = countryCode }, user.AccessToken);
 
     /// <summary>
